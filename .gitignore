@@ -1,0 +1,43 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.egg-info/
+dist/
+build/
+*.egg
+venv/
+.venv/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+._*
+Thumbs.db
+Desktop.ini
+
+# Environment
+.env
+!.env.example
+
+# Database
+*.db
+
+# Node
+node_modules/
+npm-debug.log*
+
+# ML Model Artifacts (large files - retrain locally)
+# Uncomment below if you don't want to track models in git:
+# src/backend/saved_models/autoencoder.keras
+# src/backend/saved_models/iso_forest.joblib
+# src/backend/saved_models/all-MiniLM-L6-v2/
+
+# KB Index (can be rebuilt)
+# kb_index/embeddings.npy
+# kb_index/nn.joblib

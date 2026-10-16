@@ -1,0 +1,564 @@
+[
+  {
+    "attack_type": "normal",
+    "name": "Normal Traffic",
+    "indicators": [
+      "balanced src_bytes and dst_bytes",
+      "low serror_rate and rerror_rate (< 0.05)",
+      "stable connection count within baseline",
+      "TCP SF flag established handshakes"
+    ],
+    "description": "Normal network traffic adhering to expected protocol specifications, low error rates, and typical user interaction patterns.",
+    "feature_explanation": {
+      "serror_rate": "Low connection error rate indicates healthy TCP handshakes.",
+      "count": "Moderate connection count reflects standard network activity."
+    }
+  },
+  {
+    "attack_type": "dos",
+    "name": "Neptune (SYN Flood)",
+    "indicators": [
+      "high count (> 100 in 2s window)",
+      "high serror_rate (> 0.8)",
+      "high srv_serror_rate (> 0.8)",
+      "flag_S0 (SYN sent without ACK)",
+      "protocol_type_tcp"
+    ],
+    "description": "Neptune is a SYN flood Denial-of-Service attack where an attacker sends a flood of TCP SYN packets with spoofed source addresses, overwhelming the target server's backlog queue and causing server unresponsiveness.",
+    "feature_explanation": {
+      "serror_rate": "High percentage of connections with SYN errors indicates half-open connections.",
+      "flag_S0": "Connection attempt initiated but no response received (classic SYN flood indicator)."
+    }
+  },
+  {
+    "attack_type": "dos",
+    "name": "Smurf Attack",
+    "indicators": [
+      "high src_bytes (large ICMP echo requests)",
+      "protocol_type_icmp",
+      "high srv_count",
+      "high count to broadcast address"
+    ],
+    "description": "Smurf is a distributed amplification DoS attack where ICMP echo requests with spoofed victim IP addresses are broadcast to intermediate networks, causing all hosts to flood the victim with ICMP replies.",
+    "feature_explanation": {
+      "protocol_type_icmp": "Abnormal volume of ICMP protocol traffic.",
+      "src_bytes": "Large packet sizes sent repeatedly to broadcast destinations."
+    }
+  },
+  {
+    "attack_type": "dos",
+    "name": "Pod (Ping of Death)",
+    "indicators": [
+      "anomalous src_bytes (> 65535 bytes)",
+      "wrong_fragment > 0",
+      "protocol_type_icmp"
+    ],
+    "description": "Ping of Death (Pod) involves sending malformed or oversized ICMP packets exceeding maximum IP packet size (65,535 bytes), causing buffer overflows and system crashes during packet reassembly.",
+    "feature_explanation": {
+      "wrong_fragment": "Indicates fragmented IP packets designed to crash packet assembly engines.",
+      "src_bytes": "Exceeds standard Ethernet MTU and IP specification limits."
+    }
+  },
+  {
+    "attack_type": "dos",
+    "name": "Teardrop Attack",
+    "indicators": [
+      "wrong_fragment > 0 (overlapping offsets)",
+      "protocol_type_udp or ip",
+      "anomalous fragmentation offset"
+    ],
+    "description": "Teardrop sends mangled IP fragments with overlapping payloads to a target machine. The receiving system fails to reassemble the conflicting offsets, resulting in OS kernel panic or crash.",
+    "feature_explanation": {
+      "wrong_fragment": "Primary indicator of corrupted fragment offset fields."
+    }
+  },
+  {
+    "attack_type": "dos",
+    "name": "Land Attack",
+    "indicators": [
+      "land = 1 (Source IP == Destination IP)",
+      "Source Port == Destination Port",
+      "flag_S0 or flag_SF"
+    ],
+    "description": "Land attack sends a forged TCP SYN packet where the source IP and port are set to match the target's own IP and port, forcing the victim machine to continuously reply to itself until frozen.",
+    "feature_explanation": {
+      "land": "Self-referencing packet flag confirming source and destination match."
+    }
+  },
+  {
+    "attack_type": "dos",
+    "name": "Back Attack",
+    "indicators": [
+      "high src_bytes on HTTP service",
+      "large number of front-slash requests ('/////')",
+      "service_http"
+    ],
+    "description": "Back attack targets web servers (Apache) by sending HTTP requests with deeply nested URL slashes, consuming excessive CPU cycles to process the string parsing until HTTP service collapses.",
+    "feature_explanation": {
+      "service_http": "Targeting web daemon processing pipeline.",
+      "src_bytes": "Abnormally dense request body payload."
+    }
+  },
+  {
+    "attack_type": "dos",
+    "name": "Apache2 Attack",
+    "indicators": [
+      "high count of HTTP GET requests",
+      "multiple Range header requests",
+      "service_http"
+    ],
+    "description": "Apache2 DoS exploits memory handling flaws in Apache HTTP server by requesting overlapping byte ranges, causing severe memory exhaustion and thread pool starvation.",
+    "feature_explanation": {
+      "count": "Rapid succession of range request connections."
+    }
+  },
+  {
+    "attack_type": "dos",
+    "name": "Udpstorm Attack",
+    "indicators": [
+      "protocol_type_udp",
+      "high count between echo (7) and chargen (19) ports",
+      "high src_bytes and dst_bytes"
+    ],
+    "description": "Udpstorm connects a target's UDP echo service to another host's UDP chargen service, creating an infinite loop of generated characters and echoes that saturates network interfaces.",
+    "feature_explanation": {
+      "protocol_type_udp": "High-volume UDP loop traffic."
+    }
+  },
+  {
+    "attack_type": "dos",
+    "name": "Processtable Attack",
+    "indicators": [
+      "high count across management services (e.g. Sendmail, HTTP)",
+      "connections held open without closing",
+      "high duration with minimal src_bytes"
+    ],
+    "description": "Processtable DoS fills the target system's process table by initiating numerous slow connections, preventing legitimate process allocation.",
+    "feature_explanation": {
+      "duration": "Connections held open to exhaust system process slots."
+    }
+  },
+  {
+    "attack_type": "dos",
+    "name": "Mailbomb Attack",
+    "indicators": [
+      "high count on SMTP service (port 25)",
+      "extremely large src_bytes",
+      "service_smtp"
+    ],
+    "description": "Mailbomb floods a mail server with massive volumes of email messages or extremely large attachments to exhaust disk space and mail queue memory.",
+    "feature_explanation": {
+      "service_smtp": "Mail service targeted with massive incoming bytes."
+    }
+  },
+  {
+    "attack_type": "dos",
+    "name": "Worm Attack",
+    "indicators": [
+      "rapid count spikes across random destination IPs",
+      "high dst_host_count",
+      "anomalous payload bytes"
+    ],
+    "description": "Network Worm propagation attempts self-replication across connected subnets by scanning for vulnerable open ports and pushing payload binaries.",
+    "feature_explanation": {
+      "dst_host_count": "Probing multiple destination hosts to spread infection."
+    }
+  },
+  {
+    "attack_type": "probe",
+    "name": "Portsweep Attack",
+    "indicators": [
+      "high diff_srv_rate (> 0.7)",
+      "high dst_host_count",
+      "multiple service_ targets from single source IP",
+      "flag_REJ or flag_S0"
+    ],
+    "description": "Portsweep probes multiple ports on a single host or multiple hosts to identify running network services and exploit entry points.",
+    "feature_explanation": {
+      "diff_srv_rate": "High proportion of different services targeted indicates scanning."
+    }
+  },
+  {
+    "attack_type": "probe",
+    "name": "IPSweep",
+    "indicators": [
+      "high srv_diff_host_rate (> 0.6)",
+      "high dst_host_count",
+      "single port targeted across many IP addresses",
+      "low duration per connection"
+    ],
+    "description": "IPSweep scans a block of IP addresses looking for active hosts by sending ICMP echo requests or TCP SYN packets to a specific port across multiple machines.",
+    "feature_explanation": {
+      "srv_diff_host_rate": "Same service probed across many different host IP addresses."
+    }
+  },
+  {
+    "attack_type": "probe",
+    "name": "Satan Scan",
+    "indicators": [
+      "high diff_srv_rate",
+      "high dst_host_count",
+      "probing known vulnerable ports (e.g. rlogin, NFS, rexec)",
+      "flag_REJ"
+    ],
+    "description": "Satan is an automated vulnerability scanner that checks network hosts for well-known security misconfigurations and unpatched service vulnerabilities.",
+    "feature_explanation": {
+      "diff_srv_rate": "Probing multiple distinct services sequentially."
+    }
+  },
+  {
+    "attack_type": "probe",
+    "name": "Nmap Port Scan",
+    "indicators": [
+      "high diff_srv_rate",
+      "flag_RSTR or flag_S0 or flag_REJ",
+      "low src_bytes and dst_bytes",
+      "short duration"
+    ],
+    "description": "Nmap scanning utilizes TCP SYN, FIN, NULL, or Xmas packets to detect open ports, OS versions, and firewall rules across target hosts.",
+    "feature_explanation": {
+      "flag_REJ": "Connection rejected by closed ports during scan."
+    }
+  },
+  {
+    "attack_type": "probe",
+    "name": "Mscan Attack",
+    "indicators": [
+      "high count targeting administrative ports",
+      "high diff_srv_rate",
+      "probing BIND, RPC, and SSH daemons"
+    ],
+    "description": "Mscan is a targeted probing tool that scans domain name servers and RPC daemons for specific remote root exploits.",
+    "feature_explanation": {
+      "diff_srv_rate": "Scanning system administration daemons."
+    }
+  },
+  {
+    "attack_type": "probe",
+    "name": "Saint Attack",
+    "indicators": [
+      "high diff_srv_rate",
+      "probing web, mail, and remote access daemons",
+      "flag_REJ"
+    ],
+    "description": "SAINT (Security Administrator's Integrated Network Tool) scans target networks to discover security vulnerabilities for policy auditing or exploitation.",
+    "feature_explanation": {
+      "diff_srv_rate": "Systematic assessment across multiple service daemons."
+    }
+  },
+  {
+    "attack_type": "r2l",
+    "name": "Password Guessing (Guess_passwd / Brute Force)",
+    "indicators": [
+      "high num_failed_logins (> 3)",
+      "logged_in = 0",
+      "service_telnet, service_ftp, or service_ssh",
+      "high count on authentication port"
+    ],
+    "description": "Remote-to-Local brute-force attack repeatedly attempts user credentials over SSH, FTP, or Telnet to gain unauthorized system login.",
+    "feature_explanation": {
+      "num_failed_logins": "Direct count of rejected authentication attempts.",
+      "logged_in": "Indicates login session was not successfully established."
+    }
+  },
+  {
+    "attack_type": "r2l",
+    "name": "Ftp_write Attack",
+    "indicators": [
+      "logged_in = 1",
+      "service_ftp or service_ftp_data",
+      "num_file_creations > 0 in public FTP directory"
+    ],
+    "description": "Ftp_write occurs when a remote user exploits misconfigured anonymous FTP write permissions to upload executable files or scripts to the target server.",
+    "feature_explanation": {
+      "num_file_creations": "Files created on remote server via FTP connection."
+    }
+  },
+  {
+    "attack_type": "r2l",
+    "name": "Imap Attack",
+    "indicators": [
+      "service_imap4",
+      "buffer overflow payload in IMAP login command",
+      "num_compromised > 0"
+    ],
+    "description": "Imap attack exploits a buffer overflow vulnerability in IMAP mail server authentication handlers to execute arbitrary shell commands.",
+    "feature_explanation": {
+      "service_imap4": "IMAP protocol service targeted."
+    }
+  },
+  {
+    "attack_type": "r2l",
+    "name": "Phf Attack",
+    "indicators": [
+      "service_http",
+      "HTTP request targeting /cgi-bin/phf",
+      "shell command injection strings in URI"
+    ],
+    "description": "Phf attack exploits a CGI script bug in Apache/NCSA web servers to execute arbitrary shell commands on the web server as the web user.",
+    "feature_explanation": {
+      "service_http": "CGI script exploit executed via HTTP GET request."
+    }
+  },
+  {
+    "attack_type": "r2l",
+    "name": "Multihop Attack",
+    "indicators": [
+      "num_compromised > 1",
+      "is_guest_login = 1 or logged_in = 1",
+      "stepping-stone connection behavior across multiple hosts"
+    ],
+    "description": "Multihop attack uses a series of compromised intermediate machines (stepping stones) to jump across subnets and obfuscate the attacker's true source location.",
+    "feature_explanation": {
+      "num_compromised": "Multiple compromised state indicators along network path."
+    }
+  },
+  {
+    "attack_type": "r2l",
+    "name": "Warezmaster Attack",
+    "indicators": [
+      "logged_in = 1",
+      "service_ftp or service_ftp_data",
+      "large dst_bytes uploaded",
+      "num_file_creations > 5"
+    ],
+    "description": "Warezmaster occurs when an attacker covertly transforms an unauthorized server into a storage repository ('warez site') for distributing pirated software.",
+    "feature_explanation": {
+      "num_file_creations": "Mass creation of storage files on victim host."
+    }
+  },
+  {
+    "attack_type": "r2l",
+    "name": "Warezclient Attack",
+    "indicators": [
+      "logged_in = 1",
+      "service_ftp",
+      "large src_bytes downloaded from unauthorized FTP site"
+    ],
+    "description": "Warezclient involves unauthorized users connecting to a compromised 'warez' FTP server to download contraband files.",
+    "feature_explanation": {
+      "src_bytes": "Large volume of data downloaded from hidden FTP repository."
+    }
+  },
+  {
+    "attack_type": "r2l",
+    "name": "Spy Attack",
+    "indicators": [
+      "service_telnet or service_other",
+      "num_access_files > 0",
+      "covert exfiltration of sensitive system files"
+    ],
+    "description": "Spy attack involves an attacker gaining low-level remote access and inspecting system configuration, password hashes, or user data without authorization.",
+    "feature_explanation": {
+      "num_access_files": "Accessing system files to gather intelligence."
+    }
+  },
+  {
+    "attack_type": "r2l",
+    "name": "Xlock Attack",
+    "indicators": [
+      "service_X11",
+      "is_guest_login = 1 or num_failed_logins > 0",
+      "spoofed X-Windows display lock release"
+    ],
+    "description": "Xlock attack targets X11 display servers to capture keystrokes or bypass screen lock authentication.",
+    "feature_explanation": {
+      "service_X11": "X11 windowing protocol targeted."
+    }
+  },
+  {
+    "attack_type": "r2l",
+    "name": "Xsnoop Attack",
+    "indicators": [
+      "service_X11",
+      "unauthorized keylogging stream on port 6000"
+    ],
+    "description": "Xsnoop connects to an unprotected X-Windows server to eavesdrop on user keystrokes and capture sensitive password inputs.",
+    "feature_explanation": {
+      "service_X11": "Interpreting remote X11 key events."
+    }
+  },
+  {
+    "attack_type": "r2l",
+    "name": "Snmpguess Attack",
+    "indicators": [
+      "num_failed_logins > 0 on UDP port 161",
+      "service_private or service_other",
+      "protocol_type_udp"
+    ],
+    "description": "Snmpguess attempts to brute-force SNMP community strings ('public', 'private') to read network topology and reconfigure router devices.",
+    "feature_explanation": {
+      "protocol_type_udp": "SNMP management query probing."
+    }
+  },
+  {
+    "attack_type": "r2l",
+    "name": "Snmpgetattack Attack",
+    "indicators": [
+      "unauthorized SNMP GET-BULK requests",
+      "service_private",
+      "high src_bytes"
+    ],
+    "description": "Snmpgetattack uses valid or guessed SNMP community strings to extract detailed system configuration data and MIB tree parameters.",
+    "feature_explanation": {
+      "src_bytes": "Mass extraction of SNMP management variables."
+    }
+  },
+  {
+    "attack_type": "r2l",
+    "name": "Httptunnel Attack",
+    "indicators": [
+      "service_http",
+      "encapsulated non-HTTP protocol inside HTTP POST requests",
+      "high duration with continuous bidirectional bytes"
+    ],
+    "description": "Httptunnel encapsulates unauthorized protocol traffic (e.g. SSH, Telnet) inside HTTP requests to bypass strict perimeter firewall rules.",
+    "feature_explanation": {
+      "service_http": "Covert tunnel operating over HTTP port 80."
+    }
+  },
+  {
+    "attack_type": "r2l",
+    "name": "Sendmail Attack",
+    "indicators": [
+      "service_smtp",
+      "malformed buffer string in SMTP 'DEBUG' or 'WIZ' command",
+      "num_compromised > 0"
+    ],
+    "description": "Sendmail attack exploits vulnerabilities in older Sendmail MTAs to execute shell commands as the mail superuser.",
+    "feature_explanation": {
+      "service_smtp": "Mail transfer agent buffer exploit."
+    }
+  },
+  {
+    "attack_type": "r2l",
+    "name": "Named Attack",
+    "indicators": [
+      "service_domain or service_domain_u",
+      "DNS cache poisoning or buffer overflow in BIND named daemon"
+    ],
+    "description": "Named attack targets DNS BIND daemons with malformed TSIG or IQUERY requests to achieve remote code execution.",
+    "feature_explanation": {
+      "service_domain": "DNS service protocol exploitation."
+    }
+  },
+  {
+    "attack_type": "u2r",
+    "name": "Buffer Overflow (User to Root)",
+    "indicators": [
+      "root_shell = 1",
+      "su_attempted = 1 or num_root > 0",
+      "num_file_creations > 0 in system directories",
+      "logged_in = 1"
+    ],
+    "description": "User-to-Root Buffer Overflow occurs when a local unprivileged user exploits a setuid root binary's memory bounds checking to spawn a root shell.",
+    "feature_explanation": {
+      "root_shell": "Root command shell privilege attained.",
+      "su_attempted": "Switch user to root attempted."
+    }
+  },
+  {
+    "attack_type": "u2r",
+    "name": "Rootkit Attack",
+    "indicators": [
+      "root_shell = 1",
+      "num_access_files > 3 (reading /etc/shadow or system logs)",
+      "num_file_creations > 0 (installing kernel module/trojan)"
+    ],
+    "description": "Rootkit attack replaces core system binaries (e.g. ls, ps, netstat) or loads malicious kernel modules to maintain persistent stealth root access.",
+    "feature_explanation": {
+      "root_shell": "Root shell active during rootkit installation.",
+      "num_file_creations": "Trojaned binaries or kernel drivers created."
+    }
+  },
+  {
+    "attack_type": "u2r",
+    "name": "Loadmodule Attack",
+    "indicators": [
+      "root_shell = 1",
+      "service_exec or local login",
+      "loadable kernel module (LKM) injection"
+    ],
+    "description": "Loadmodule exploits vulnerabilities in OS kernel module loading utilities (insmod/modprobe) to load arbitrary malicious code into kernel space.",
+    "feature_explanation": {
+      "root_shell": "Kernel module load resulting in root shell."
+    }
+  },
+  {
+    "attack_type": "u2r",
+    "name": "Perl Attack",
+    "indicators": [
+      "root_shell = 1",
+      "execution of setuid Perl script with environment variable manipulation"
+    ],
+    "description": "Perl U2R attack manipulates setuid Perl scripts (e.g., via PERL5LIB environment variable) to execute arbitrary commands with superuser privileges.",
+    "feature_explanation": {
+      "root_shell": "Privilege escalation executed via setuid script."
+    }
+  },
+  {
+    "attack_type": "u2r",
+    "name": "Sqlattack Attack",
+    "indicators": [
+      "root_shell = 1",
+      "service_sql_net or database connection",
+      "SQL injection leading to OS command execution (xp_cmdshell)"
+    ],
+    "description": "Sqlattack uses database SQL injection vulnerabilities to break out of the database engine and execute system root commands on the underlying host OS.",
+    "feature_explanation": {
+      "service_sql_net": "Database network protocol exploited for OS access."
+    }
+  },
+  {
+    "attack_type": "u2r",
+    "name": "Xterm Attack",
+    "indicators": [
+      "root_shell = 1",
+      "service_X11",
+      "exploiting setuid xterm window title sequence bug"
+    ],
+    "description": "Xterm attack exploits a font handling or terminal escape sequence vulnerability in the setuid xterm binary to gain root access.",
+    "feature_explanation": {
+      "root_shell": "Terminal escape sequence granting root shell."
+    }
+  },
+  {
+    "attack_type": "u2r",
+    "name": "Ps Attack",
+    "indicators": [
+      "root_shell = 1",
+      "race condition in setuid ps utility /proc parsing"
+    ],
+    "description": "Ps attack exploits a race condition in setuid process status binaries to overwrite system configuration files and elevate permissions to root.",
+    "feature_explanation": {
+      "root_shell": "Race condition exploit yielding root shell."
+    }
+  },
+  {
+    "attack_type": "modern_threat",
+    "name": "Ransomware Command & Control (C2)",
+    "indicators": [
+      "periodic beaconing duration and count",
+      "encrypted payload stream on non-standard ports",
+      "high dst_host_srv_diff_host_rate"
+    ],
+    "description": "Ransomware C2 traffic consists of outbound beaconing connections from an infected enterprise host to an external command-and-control server to report encryption keys and receive execution commands.",
+    "feature_explanation": {
+      "duration": "Periodic heartbeat connection intervals.",
+      "dst_host_count": "Single host reaching out to external IP infrastructure."
+    }
+  },
+  {
+    "attack_type": "modern_threat",
+    "name": "Data Exfiltration Over DNS / HTTPS",
+    "indicators": [
+      "high src_bytes outbound",
+      "service_domain or service_http_443",
+      "unusually high frequency of subdomains or POST payloads"
+    ],
+    "description": "Data Exfiltration involves stealthily transferring confidential organization data out of the network perimeter by chunking data into DNS queries or encrypted HTTPS POST requests.",
+    "feature_explanation": {
+      "src_bytes": "Large volume of stolen data egressing the network."
+    }
+  }
+]
