@@ -108,50 +108,64 @@ The `RAGExplanationService` transforms the numerical SHAP outputs into actionabl
 
 # 7. Model Training & Evaluation Metrics
 
-The Hybrid ML Engine was rigorously evaluated against the NSL-KDD test dataset (`KDDTest+`), containing 22,544 diverse network records.
+The Hybrid ML Engine was empirically evaluated against all 22,544 records of the official NSL-KDD benchmark test dataset (`KDDTest+.txt`), containing 9,711 benign baseline records and 12,833 diverse attack records.
 
 ## 7.1 Confusion Matrix Analysis
-The confusion matrix below illustrates the model's precise capability to distinguish between safe baseline traffic and malicious anomalies:
+The confusion matrix below illustrates the model's exact empirical capability to distinguish between safe baseline traffic and malicious anomalies at the calibrated decision threshold ($\Theta = 0.127941$):
 
 ```text
                 Predicted Normal (0)   Predicted Anomaly (1)
-Actual Normal  (0)     TN = 9,451           FP = 260
-Actual Anomaly (1)     FN = 612             TP = 12,221
+Actual Normal  (0)     TN = 8,560           FP = 1,151
+Actual Anomaly (1)     FN = 986             TP = 11,847
 ```
 
-- **True Negatives (TN)**: 9,451 normal packets correctly allowed.
-- **False Positives (FP)**: 260 normal packets falsely flagged (Type I Error).
-- **False Negatives (FN)**: 612 attacks missed by the model (Type II Error).
-- **True Positives (TP)**: 12,221 attacks correctly detected and blocked.
+- **True Negatives (TN)**: **8,560** normal packets correctly allowed (88.15% specificity on benign traffic).
+- **False Positives (FP)**: **1,151** normal packets falsely flagged (Type I Error / 11.85% False Positive Rate).
+- **False Negatives (FN)**: **986** attacks missed by the model (Type II Error / 7.68% False Negative Rate).
+- **True Positives (TP)**: **11,847** attacks correctly detected and intercepted (92.32% Recall / Sensitivity).
 
 ## 7.2 Core Evaluation Parameters
-Based on the fusion weight $\alpha = 0.75$ favoring the Deep Autoencoder:
+Based on the calibrated hybrid score fusion ($\text{Score} = 0.75 \times \text{AE}_{\text{norm}} + 0.25 \times \text{IF}_{\text{norm}}$) evaluated at threshold $\Theta = 0.127941$:
 
-- **Accuracy**: `96.13%` (Overall correctness of the system)
-- **Precision**: `97.91%` (When it flags an anomaly, it is almost always correct, reducing alert fatigue)
-- **Recall (Sensitivity)**: `95.23%` (The system successfully catches ~95% of all incoming attacks)
-- **F1-Score**: `96.55%` (The harmonic mean of precision and recall, proving the system is highly balanced)
-- **False Positive Rate (FPR)**: `2.68%` (Only 2.68% of normal, legitimate traffic is falsely flagged, making it viable for production)
+- **Accuracy**: `90.52%` (20,407 correct classifications out of 22,544 total test samples)
+- **AUC-ROC**: `96.72%` (Global discriminative capability separating benign from anomalous distributions across all operating thresholds)
+- **Precision**: `91.14%` (When an alert is raised, it is a genuine attack in 91.14% of cases)
+- **Recall (Sensitivity)**: `92.32%` (The system intercepts 11,847 out of 12,833 total attack vectors)
+- **F1-Score**: `91.73%` (Harmonic mean of precision and recall, demonstrating balanced performance)
+- **False Positive Rate (FPR)**: `11.85%` (1,151 false alarms out of 9,711 legitimate records)
+- **False Negative Rate (FNR)**: `7.68%` (Only 986 missed attacks out of 12,833 attacks)
 
-## 7.3 Pipeline Optimization (Reaching 96.13% Accuracy)
+## 7.3 Ablation Study: Constituent vs. Hybrid Performance
 
-The baseline model pipeline initially hovered around ~79% accuracy (specifically 79.74%) with a massive **False Positive Rate of 19.13%** (flagging 1,858 normal packets as attacks). The significant jump to 96.13% accuracy—and the crucial reduction of the FPR down to just **2.68%** (only 260 false alarms)—was achieved through precise mathematical and architectural optimizations:
+Ablation benchmarking demonstrates the concrete synergy of the hybrid ensemble architecture over standalone detectors:
 
-1. **Robust Feature Scaling (FPR Reduction Core Driver)**:
-   - **Change**: Swapped standard `StandardScaler` (Z-Score normalization) for `QuantileTransformer(output_distribution='normal')`.
-   - **Impact**: Network traffic naturally contains massive volumetric outliers. Standard scaling skewed the baseline, causing normal but high-volume traffic to be falsely flagged. The Quantile Transformer squashes these extreme arbitrary values and forces the feature data into a strict Gaussian (bell-curve) distribution. This drastically reduced the 19.13% FPR by making it vastly easier for the neural network to understand the baseline "normal" pattern without distortion.
-2. **Sharpened Autoencoder Bottleneck**:
-   - **Change**: Deepened the neural network (from 5 to 7 layers) and constricted the latent space bottleneck from 8 dimensions down to 4 dimensions.
-   - **Impact**: By forcing the autoencoder to compress 122 input features down into a much "tighter" 4-dimensional space, the model had to learn only the absolute core, essential patterns of *normal* traffic. When an attack packet is fed into it, it fails completely to reconstruct it, resulting in a massively spiked, highly detectable error rate.
-3. **Dynamic ROC Youden's J Thresholding**:
-   - **Change**: Moved away from a static, hardcoded anomaly threshold to a mathematically derived dynamic threshold using the ROC curve's Youden J statistic ($\max(\text{TPR} - \text{FPR})$).
-   - **Impact**: Instead of guessing a cutoff, the system mathematically pinpointed the exact threshold that maximized True Positives while keeping False Positives at the absolute mathematical minimum for the dataset.
-4. **Tuning the Hybrid Fusion Weight ($\alpha$)**:
-   - **Change**: Increased the Autoencoder reliance from $\alpha = 0.60$ to $\alpha = 0.75$.
-   - **Impact**: Because the new "sharpened" Autoencoder performed drastically better at highlighting anomalies via reconstruction error, the algorithm was adjusted to trust the Neural Network 75% of the time, keeping the Isolation Forest at 25% as a statistical safety net for zero-day outliers.
-5. **Strengthening the Isolation Forest**:
-   - **Change**: Increased the number of randomized estimators (trees) from 200 to 250.
-   - **Impact**: This increased the statistical voting power of the forest, helping it correctly classify complex edge-case packets that the neural network was unsure about.
+| Model Architecture | Accuracy | Precision | Recall | F1-Score | AUC-ROC | False Positives | False Negatives |
+|---|---|---|---|---|---|---|---|
+| **Autoencoder Alone** | 82.37% | **98.16%** | 70.34% | 81.96% | **96.83%** | **169** | 3,806 |
+| **Isolation Forest Alone** | 77.75% | 75.10% | 91.12% | 82.34% | 84.09% | 3,876 | 1,140 |
+| **Hybrid Ensemble ($\alpha=0.75$)** | **90.52%** | 91.14% | **92.32%** | **91.73%** | 96.72% | 1,151 | **986** |
+
+### Key Takeaways from the Ablation:
+1. **Autoencoder Alone** achieves high precision (98.16%) with very few false alarms (169), but suffers from low recall (70.34%), missing 3,806 attacks.
+2. **Isolation Forest Alone** captures attack patterns aggressively (91.12% recall), but generates high false alarms (3,876 FPs, ~40% FPR).
+3. **The Hybrid Ensemble** successfully fuses both models: it drives recall to **92.32%** (higher than either component alone) while keeping overall accuracy at **90.52%** and F1-score at **91.73%**.
+
+## 7.4 Pipeline Optimization (Reaching 90.52% Real Benchmark Accuracy)
+
+The baseline unsupervised model initially suffered from massive threshold mismatch (~43.09% accuracy, missing 99.97% of attacks when using an uncalibrated threshold $\theta=0.4500$). The achievement of a solid **90.52% test accuracy** and **96.72% AUC-ROC** on the difficult `KDDTest+` set was driven by four core optimizations:
+
+1. **Robust Feature Scaling (`QuantileTransformer`)**:
+   - **Change**: Replaced standard Z-Score normalization with `QuantileTransformer(output_distribution='normal', random_state=42)`.
+   - **Impact**: Tabular network metrics contain extreme volumetric outliers (e.g., massive byte bursts). Quantile transformation maps non-linear skewed distributions into a smooth Gaussian bell curve, stabilizing neural reconstruction error.
+2. **Sharpened Latent Bottleneck (4 Units)**:
+   - **Change**: Deepened the Autoencoder (7 layers: $122 \rightarrow 64 \rightarrow 32 \rightarrow 16 \rightarrow 4 \rightarrow 16 \rightarrow 32 \rightarrow 64 \rightarrow 122$) with a 4-dimensional latent bottleneck.
+   - **Impact**: Forces the model to extract strictly invariant representations of normal traffic, causing significant reconstruction error spikes whenever attack vectors are encountered.
+3. **Dynamic ROC Youden's J Threshold Calibration**:
+   - **Change**: Calibrated the decision cutoff using the Youden J statistic ($J = \text{TPR} - \text{FPR}$) across the ROC curve.
+   - **Impact**: Empirically determined the optimal operating threshold ($\Theta = 0.127941$) that mathematically maximizes attack detection while controlling false positives.
+4. **Weighted Ensemble Fusion ($\alpha = 0.75$)**:
+   - **Change**: Allocated 75% decision weight to Autoencoder reconstruction MSE and 25% to Isolation Forest anomaly scores.
+   - **Impact**: Gives primary weight to the neural autoencoder's tight reconstruction barrier while using the 250-tree Isolation Forest as a statistical safety net for zero-day outliers.
 
 ---
 

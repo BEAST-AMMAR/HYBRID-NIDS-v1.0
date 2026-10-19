@@ -350,26 +350,38 @@ After unifying the pipeline and configuring the optimal random seed (2024), the 
 ### Key Insights
 | Metric | Value |
 |---|---|
-| **Calibrated Threshold (Θ)** | **0.142457** |
+| **Calibrated Threshold ($\Theta$)** | **0.127941** |
+| **Total Test Samples** | **22,544** |
+| **Normal Traffic Samples (0)** | **9,711** |
+| **Attack Traffic Samples (1)** | **12,833** |
+| **Accuracy** | **90.52%** (20,407 / 22,544) |
+| **AUC-ROC** | **96.72%** |
+| **Precision** | **91.14%** |
+| **Recall (Detection Rate)** | **92.32%** (11,847 / 12,833) |
+| **F1-Score** | **91.73%** |
+| **False Positive Rate (FPR)** | **11.85%** (1,151 / 9,711) |
+| **False Negative Rate (FNR)** | **7.68%** (986 / 12,833) |
 
-### Confusion Matrix
+### Confusion Matrix (Empirically Measured on KDDTest+)
 
 |  | Predicted Normal (0) | Predicted Anomaly (1) |
 |---|---|---|
-| **Actual Normal (0)** | TN = 8,966 | FP = 745 |
-| **Actual Anomaly (1)** | FN = 1,354 | TP = 11,479 |
+| **Actual Normal (0)** | **TN = 8,560** (88.15%) | **FP = 1,151** (11.85%) |
+| **Actual Anomaly (1)** | **FN = 986** (7.68%) | **TP = 11,847** (92.32%) |
 
 ### Interpretation
-- **93.91% Precision** means that when the system flags a packet as anomalous, it is correct ~94% of the time — very low false alarm rate.
-- **89.45% Recall** means the system catches ~89% of all actual attacks.
-- **745 False Positives** out of 9,711 normal packets (7.67% FPR) — acceptable for a real-time anomaly detector.
-- **1,354 False Negatives** out of 12,833 attacks (10.55% FNR) — primarily from subtle R2L/U2R attacks that are inherently difficult to distinguish from normal traffic at the packet level.
+- **91.14% Precision**: When the system flags an alert, there is a 91.14% probability that the packet is a genuine cyberattack, minimizing SOC alert fatigue.
+- **92.32% Recall (Sensitivity)**: The hybrid ensemble intercepts 11,847 out of 12,833 attacks on the difficult benchmark test set, missing only 7.68% of threats.
+- **1,151 False Positives**: Out of 9,711 benign packets, 1,151 were flagged (11.85% FPR), predominantly caused by rare protocol/service edge cases.
+- **986 False Negatives**: Only 986 attacks escaped detection out of 12,833 (7.68% FNR), primarily stealthy low-and-slow R2L/U2R privilege escalations.
 
-### Autoencoder Training Convergence
-- Final training loss: `0.4509` (MSE), MAE: `0.2391`
-- Final validation loss: `0.2788`, val_MAE: `0.1330`
-- The validation loss being significantly lower than training loss indicates good generalization with no overfitting (dropout and BatchNorm are working correctly).
-- All 60 epochs completed (early stopping did not trigger, indicating the model continued improving).
+### Constituent Model Ablation
+
+| Model | Accuracy | Precision | Recall | F1-Score | AUC-ROC | False Positives | False Negatives |
+|---|---|---|---|---|---|---|---|
+| **Autoencoder Alone** | 82.37% | **98.16%** | 70.34% | 81.96% | **96.83%** | **169** | 3,806 |
+| **Isolation Forest Alone** | 77.75% | 75.10% | 91.12% | 82.34% | 84.09% | 3,876 | 1,140 |
+| **Hybrid Ensemble ($\alpha=0.75$)** | **90.52%** | 91.14% | **92.32%** | **91.73%** | 96.72% | 1,151 | **986** |
 
 ---
 
@@ -378,25 +390,25 @@ After unifying the pipeline and configuring the optimal random seed (2024), the 
 ```
 Hybrid 2/
 ├── .gitignore
-├── create_admin.py                    # Admin user setup utility
-├── knowledge_base.json               # Base KB (8 entries)
-├── knowledge_base_enhanced.json       # Enhanced KB (49 entries)
+├── README.md                           # Main project documentation
+├── eval_results.txt                    # Exact benchmark evaluation metrics
+├── eval_results.json                   # Machine-readable evaluation metrics
+├── create_admin.py                     # Admin user setup utility
+├── knowledge_base.json                # Base KB (8 entries)
+├── knowledge_base_enhanced.json        # Enhanced KB (49 entries)
 ├── data/
-│   ├── KDDTrain+.txt                 # NSL-KDD training set
-│   ├── KDDTest+.txt                  # NSL-KDD test set
-│   └── download_nsl_kdd.py           # Download utility
-├── documentation/                     # All reports, diagrams, docs
-│   ├── HYBRID_NIDS_DEEP_ANALYSIS.md + .pdf
-│   ├── Project_Report.md + .pdf
-│   ├── FULL_CHAT_IMPLEMENTATION_LOG.md + .pdf
-│   ├── NIDS_MODEL_OPTIMIZATION_PLAN.md + .pdf
-│   ├── NIDS_TECHNICAL_DISCUSSION_AND_REMEDIATION.md + .pdf
-│   ├── README.md + .pdf
+│   ├── KDDTrain+.txt                  # NSL-KDD training set
+│   ├── KDDTest+.txt                   # NSL-KDD test set
+│   └── download_nsl_kdd.py            # Download utility
+├── documentation/                      # Curated technical reports and diagrams
+│   ├── Project_Report.md              # Comprehensive technical report
+│   ├── HYBRID_NIDS_ANALYSIS_REPORT.md # Complete architectural reference
+│   ├── COMPREHENSIVE_NIDS_TECHNICAL_REPORT_AND_DIAGNOSTIC.md  # Deep forensic diagnostic
 │   ├── architecture.png
 │   ├── flow.png
 │   ├── structure.png
 │   └── hybrid_nids_architecture_diagram.png
-├── kb_index/                          # Prebuilt semantic vector index
+├── kb_index/                           # Prebuilt semantic vector index
 │   ├── embeddings.npy
 │   ├── metadata.json
 │   └── nn.joblib

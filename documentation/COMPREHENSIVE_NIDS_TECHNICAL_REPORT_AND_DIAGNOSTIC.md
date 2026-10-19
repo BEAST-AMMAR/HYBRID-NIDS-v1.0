@@ -204,20 +204,22 @@ Evaluated against the official benchmark test set `KDDTest+.txt` (22,544 packets
 | **Recall** | **92.32%** | Proportion of all attacks successfully intercepted. |
 | **F1-Score** | **91.73%** | Harmonic mean confirming robust balance under class imbalance. |
 | **Base Threshold ($\Theta$)** | **0.127941** | Optimized via Youden's J statistic ($J = \text{TPR} - \text{FPR}$). |
+| **False Positive Rate (FPR)** | **11.85%** | 1,151 false alarms out of 9,711 legitimate benign packets. |
+| **False Negative Rate (FNR)** | **7.68%** | 986 missed attacks out of 12,833 total attacks. |
 
 ### Confusion Matrix
 $$\begin{array}{c|cc}
 & \textbf{Predicted Normal (0)} & \textbf{Predicted Anomaly (1)} \\
 \hline
-\textbf{Actual Normal (0)} & \text{TN} = \mathbf{8,966} & \text{FP} = \mathbf{745} \\
-\textbf{Actual Anomaly (1)} & \text{FN} = \mathbf{1,354} & \text{TP} = \mathbf{11,479} \\
+\textbf{Actual Normal (0)} & \text{TN} = \mathbf{8,560} & \text{FP} = \mathbf{1,151} \\
+\textbf{Actual Anomaly (1)} & \text{FN} = \mathbf{986} & \text{TP} = \mathbf{11,847} \\
 \end{array}$$
 
 ---
 
 # 🔬 FORENSIC INVESTIGATION: Why Almost Every Packet Was Flagged as an Anomaly
 
-Despite an official test accuracy of 90.52% and an FPR of 7.67%, live testing across Live Network, Synthetic Generator, Physical Injector, and Dataset Upload resulted in nearly 100% of packets being flagged as anomalies in the UI (e.g., 71/71, 50/52, 106/108, 126/128, 815/823).
+Despite an official test accuracy of 90.52% and a benchmark test FPR of 11.85%, live testing across Live Network, Synthetic Generator, Physical Injector, and Dataset Upload resulted in nearly 100% of packets being flagged as anomalies in the UI (e.g., 71/71, 50/52, 106/108, 126/128, 815/823).
 
 The root cause is **not** conventional neural network overfitting or underfitting. It is caused by **five compounding architectural and algorithmic design flaws** identified through source code inspection:
 

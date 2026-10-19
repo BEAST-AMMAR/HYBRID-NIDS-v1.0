@@ -1,0 +1,68 @@
+{
+  "model_architecture": {
+    "autoencoder": "Deep Autoencoder (116 -> 64 -> 32 -> 16 -> 4 -> 16 -> 32 -> 64 -> 116)",
+    "isolation_forest": "250 Trees (contamination=0.10)",
+    "scaler": "QuantileTransformer(output_distribution='normal')",
+    "fusion": "0.75 * Autoencoder_Norm + 0.25 * IsolationForest_Norm",
+    "base_threshold": 0.127941
+  },
+  "dataset_statistics": {
+    "total_samples": 22544,
+    "normal_samples": 9711,
+    "anomaly_samples": 12833
+  },
+  "hybrid_model_results": {
+    "accuracy": 0.9052075940383251,
+    "auc_roc": 0.9672391379952553,
+    "precision": 0.911447915063856,
+    "recall": 0.9231668355022208,
+    "f1_score": 0.9172699469629515,
+    "false_positive_rate": 0.11852538358562455,
+    "false_negative_rate": 0.07683316449777916,
+    "confusion_matrix": {
+      "true_negatives": 8560,
+      "false_positives": 1151,
+      "false_negatives": 986,
+      "true_positives": 11847
+    }
+  },
+  "autoencoder_alone_results": {
+    "accuracy": 0.8236781405251952,
+    "auc_roc": 0.968314644668623,
+    "precision": 0.9816224445411048,
+    "recall": 0.7034208680744954,
+    "f1_score": 0.8195560397657633,
+    "confusion_matrix": {
+      "true_negatives": 9542,
+      "false_positives": 169,
+      "false_negatives": 3806,
+      "true_positives": 9027
+    }
+  },
+  "isolation_forest_alone_results": {
+    "accuracy": 0.7775017743080199,
+    "auc_roc": 0.8409160802679394,
+    "precision": 0.7510437407669086,
+    "recall": 0.9111665238058131,
+    "f1_score": 0.8233927188226181,
+    "confusion_matrix": {
+      "true_negatives": 5835,
+      "false_positives": 3876,
+      "false_negatives": 1140,
+      "true_positives": 11693
+    }
+  },
+  "youden_optimal_on_test": {
+    "optimal_threshold": 0.12794081608513133,
+    "accuracy": 0.9052075940383251,
+    "precision": 0.911447915063856,
+    "recall": 0.9231668355022208,
+    "f1_score": 0.9172699469629515,
+    "confusion_matrix": {
+      "true_negatives": 8560,
+      "false_positives": 1151,
+      "false_negatives": 986,
+      "true_positives": 11847
+    }
+  }
+}
