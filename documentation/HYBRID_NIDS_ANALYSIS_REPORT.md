@@ -383,6 +383,21 @@ After unifying the pipeline and configuring the optimal random seed (2024), the 
 | **Isolation Forest Alone** | 77.75% | 75.10% | 91.12% | 82.34% | 84.09% | 3,876 | 1,140 |
 | **Hybrid Ensemble ($\alpha=0.75$)** | **90.52%** | 91.14% | **92.32%** | **91.73%** | 96.72% | 1,151 | **986** |
 
+### Training Set Performance & Generalization Analysis
+
+Evaluated across all **125,973 records** of the benchmark training set (`KDDTrain+.txt`):
+
+| Evaluation Parameter | Training Set (`KDDTrain+.txt`, 125,973) | Test Set (`KDDTest+.txt`, 22,544) | Generalization Delta |
+|---|---|---|---|
+| **Accuracy** | **92.48%** | **90.52%** | $-1.96\%$ (Healthy generalization) |
+| **AUC-ROC** | **98.40%** | **96.72%** | $-1.68\%$ (Strong distribution stability) |
+| **Recall (Sensitivity)** | **97.91%** | **92.32%** | $-5.59\%$ (Reflects 17 novel zero-day attack classes) |
+| **Precision** | **87.44%** | **91.14%** | $+3.70\%$ (Fewer false alarms on test set) |
+| **F1-Score** | **92.38%** | **91.73%** | $-0.65\%$ (Consistent harmonic balance) |
+| **False Positive Rate (FPR)** | **12.25%** | **11.85%** | $-0.40\%$ (Stable false alarm rate) |
+| **False Negative Rate (FNR)** | **2.09%** | **7.68%** | $+5.59\%$ (Low miss rate even with unseen attacks) |
+| **Calibrated Threshold ($\Theta$)** | **0.127941** | **0.127941** | Identical mathematical cutoff |
+
 ---
 
 ## 12. 📁 Project Structure (Post-Cleanup)

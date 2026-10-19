@@ -167,6 +167,44 @@ The baseline unsupervised model initially suffered from massive threshold mismat
    - **Change**: Allocated 75% decision weight to Autoencoder reconstruction MSE and 25% to Isolation Forest anomaly scores.
    - **Impact**: Gives primary weight to the neural autoencoder's tight reconstruction barrier while using the 250-tree Isolation Forest as a statistical safety net for zero-day outliers.
 
+## 7.5 Training Set Evaluation & Cross-Dataset Generalization Analysis
+
+To verify that the model did not suffer from overfitting, the hybrid engine was evaluated across all **125,973 records** of the complete training benchmark (`KDDTrain+.txt`):
+
+```text
+                        Predicted Normal (0)      Predicted Anomaly (1)
+Actual Normal  (0)       TN = 59,095 (46.91%)      FP = 8,248 (6.55%)
+Actual Anomaly (1)       FN = 1,224  (0.97%)       TP = 57,406 (45.57%)
+```
+
+### Side-by-Side Benchmark Generalization Comparison
+
+| Evaluation Parameter | Training Set (`KDDTrain+.txt`, 125,973) | Test Set (`KDDTest+.txt`, 22,544) | Generalization Delta |
+|---|---|---|---|
+| **Accuracy** | **92.48%** | **90.52%** | $-1.96\%$ (Normal generalization drop) |
+| **AUC-ROC** | **98.40%** | **96.72%** | $-1.68\%$ (Strong cross-dataset stability) |
+| **Recall (Sensitivity)** | **97.91%** | **92.32%** | $-5.59\%$ (Reflects 17 novel zero-day attack classes) |
+| **Precision** | **87.44%** | **91.14%** | $+3.70\%$ (Fewer false alarms on test set) |
+| **F1-Score** | **92.38%** | **91.73%** | $-0.65\%$ (Consistent harmonic balance) |
+| **False Positive Rate (FPR)** | **12.25%** | **11.85%** | $-0.40\%$ (Stable false alarm rate) |
+| **False Negative Rate (FNR)** | **2.09%** | **7.68%** | $+5.59\%$ (Low miss rate even with unseen attacks) |
+| **Calibrated Threshold ($\Theta$)** | **0.127941** | **0.127941** | Identical mathematical cutoff |
+
+> **Generalization Insight**: The test set `KDDTest+.txt` contains 17 novel attack classes never present in training data (such as `snmpgetattack`, `mscan`, `saint`, and `httptunnel`). The marginal accuracy drop of only $1.96\%$ proves that the unsupervised Autoencoder + Isolation Forest architecture genuinely learns structural anomaly dynamics rather than memorizing training labels.
+
+## 7.6 Seed Configuration & Dynamic Heuristics
+
+### Reproducibility Seeds
+- **Global Seed**: `SEED = 2024` locked across `random`, `np.random`, and `tf.random` in `train_pipeline.py`.
+- **Ensemble Seeds**: `random_state = 42` for `QuantileTransformer` (stable Gaussian mapping) and `IsolationForest` (deterministic 250-tree partition).
+
+### Dynamic Operational Heuristics
+During live packet monitoring in `detector.py`, the system employs four mathematical heuristics:
+1. **Safety Floor**: $\Theta_{\text{dynamic}} = \max(\Theta_{\text{base}},\; \mu_{\text{buffer}} + 3.0 \cdot \sigma_{\text{buffer}})$, ensuring sensitivity never drops below the calibrated `0.127941`.
+2. **Warm-up Rule**: The threshold remains strictly at `0.127941` until at least 30 packets have populated the buffer.
+3. **3-Sigma Gaussian Adaptation**: Tracks ambient noise over a 1,000-packet rolling window (`deque(maxlen=1000)`), adapting upward during legitimate traffic spikes to suppress false alarm storms.
+4. **Buffer Poisoning Protection**: Packets with scores $> 1.5 \times \Theta_{\text{base}}$ or $> 1.25 \times \Theta_{\text{dynamic}}$ are barred from entering the buffer, preventing an attacker from gradually elevating the threshold over time.
+
 ---
 
 # 8. Real-Time Deployment & Hardware Operations
