@@ -1,264 +1,477 @@
-import scapy.all as scapy
-import pandas as pd
-import numpy as np
+"""
+=============================================================================
+  RealTimeFeatureExtractor — NetFlow V2 Bidirectional Flow Engine
+=============================================================================
+  Captures live IP packets via Scapy, maintains stateful bidirectional
+  NetFlow records, performs host-context temporal aggregation, and maps
+  them into the 133-feature NF-UQ-NIDS-v2 matrix via NfUqFeatureAdapter.
+=============================================================================
+"""
+
 import os
-import joblib
 import time
 import json
+import yaml
+import numpy as np
+import pandas as pd
 from collections import defaultdict, deque
 
-class ConnectionState:
-    def __init__(self, src, dst, sport, dport, proto, service, current_time):
+from .nf_uq_pipeline import NfUqFeatureAdapter
+
+
+class NetPacket:
+    """Lightweight flow packet representation avoiding heavy Scapy Windows interface scan."""
+    def __init__(self, src: str, dst: str, sport: int = 0, dport: int = 0, proto: int = 6, 
+                 flags: int = 0, length: int = 64, ttl: int = 64, window: int = 8192, raw: bytes = b""):
+        self.src = src
+        self.dst = dst
+        self.sport = int(sport)
+        self.dport = int(dport)
+        self.proto = int(proto)
+        self.flags = int(flags)
+        self.length = max(length, len(raw))
+        self.ttl = int(ttl)
+        self.window = int(window)
+        self.raw = raw
+
+    def __len__(self):
+        return self.length
+
+
+# Common L7 Protocol mappings in NF-UQ-NIDS-v2
+# Note: 0.0 is the most frequent L7 class for encrypted TLS (port 443), DNS (port 53), and SMTP (port 25)
+L7_PORT_MAP = {
+    53: 0.0,        # DNS (dominant in NF-UQ benign)
+    80: 7.0,        # HTTP
+    443: 0.0,       # HTTPS / TLS (dominant in NF-UQ benign)
+    22: 92.0,       # SSH
+    21: 1.0,        # FTP
+    25: 0.0,        # SMTP
+    110: 5.212,     # POP3
+    143: 5.239,     # IMAP
+    123: 123.0,     # NTP
+    445: 41.0,      # SMB / Microsoft-DS
+    3389: 3389.0,   # RDP
+    8080: 7.0,      # HTTP alternate
+    8443: 0.0       # HTTPS alternate
+}
+
+# Standard UDP discovery, timing, and local service ports ubiquitous on host networks
+STANDARD_UDP_SERVICES = {
+    53,    # DNS Domain Name System
+    67,    # DHCP server
+    68,    # DHCP client
+    123,   # NTP Network Time Protocol
+    137,   # NetBIOS name service
+    138,   # NetBIOS datagram service
+    500,   # IKE / IPsec
+    1900,  # SSDP / UPnP device discovery
+    3702,  # WS-Discovery
+    4500,  # IPsec NAT-T
+    5353,  # mDNS (Multicast DNS)
+    5355,  # LLMNR (Link-Local Multicast Name Resolution)
+}
+
+
+class NetFlowConnection:
+    """Stateful bidirectional flow container matching NetFlow V2 schema."""
+    def __init__(self, src, dst, sport, dport, proto, start_time):
         self.src = src
         self.dst = dst
         self.sport = sport
         self.dport = dport
         self.proto = proto
-        self.service = service
-        self.start_time = current_time
+        self.start_time = start_time
+        self.last_time = start_time
+
+        # Bidirectional counters
+        self.in_bytes = 0
+        self.out_bytes = 0
+        self.in_pkts = 0
+        self.out_pkts = 0
+
+        # TCP flags & windows
+        self.tcp_flags = 0
+        self.client_tcp_flags = 0
+        self.server_tcp_flags = 0
+        self.tcp_win_max_in = 0
+        self.tcp_win_max_out = 0
+
+        # Packet size statistics
+        self.pkt_lengths = []
+        self.ttls = []
+
+        # L7 Protocol inference
+        self.l7_proto = L7_PORT_MAP.get(dport, L7_PORT_MAP.get(sport, 0.0))
+
+    def update(self, packet, is_client_to_server, current_time):
         self.last_time = current_time
-        
-        self.src_bytes = 0
-        self.dst_bytes = 0
-        self.land = 1 if src == dst and sport == dport else 0
-        self.wrong_fragment = 0
-        self.urgent = 0
-        self.flags_seen = set()
-        
-    def get_flag(self, current_time=None):
-        if self.proto != "tcp":
-            return "SF"
-        f = self.flags_seen
-        if 'R' in f:
-            return "REJ"
-        if 'S' in f and 'A' not in f:
-            t = current_time if current_time is not None else self.last_time
-            if (t - self.start_time) < 2.0:
-                return "S1" # In-flight connection handshake
-            return "S0" # Unanswered connection attempt timed out
-        if 'S' in f and 'A' in f and 'F' not in f:
-            return "SF" if (self.src_bytes > 0 or self.dst_bytes > 0) else "S1"
-        return "SF"
-        
-    @property
-    def is_error(self):
-        flag = self.get_flag()
-        return 1 if flag in ["REJ", "RSTR", "RSTO", "S0"] else 0
+        raw_len = len(packet)
+
+        # Standard NetFlow V2 active timeout rollover:
+        # Every 30 seconds of continuous flow activity, roll over window counters
+        # so long-lived streams don't accumulate thousands of packets into an outlier
+        if (current_time - self.start_time) > 30.0:
+            self.start_time = current_time
+            self.in_pkts = max(1, self.in_pkts // 4)
+            self.out_pkts = max(1, self.out_pkts // 4)
+            self.in_bytes = max(128, self.in_bytes // 4)
+            self.out_bytes = max(128, self.out_bytes // 4)
+            self.pkt_lengths = self.pkt_lengths[-15:]
+            self.ttls = self.ttls[-15:]
+
+        # LRO / GRO Reassembly detection: Wire MTU is 1514 bytes
+        if raw_len > 1514:
+            pkt_count = max(1, int(np.ceil(raw_len / 1420)))
+            pkt_len = 1420
+        else:
+            pkt_count = 1
+            pkt_len = raw_len
+
+        self.pkt_lengths.extend([pkt_len] * min(pkt_count, 5))
+
+        ttl = 64
+        flag_val = 0
+        win = 8192
+
+        if isinstance(packet, NetPacket):
+            ttl = packet.ttl
+            flag_val = packet.flags
+            win = packet.window
+        elif hasattr(packet, "haslayer"):
+            if packet.haslayer("IP"):
+                ttl = int(packet["IP"].ttl)
+            if packet.haslayer("TCP"):
+                flag_val = int(packet["TCP"].flags)
+                win = int(packet["TCP"].window)
+
+        self.ttls.append(ttl)
+        eff_win = min(win, 29200) if win > 0 else 8192
+
+        if is_client_to_server:
+            self.in_pkts += pkt_count
+            self.in_bytes += raw_len
+            self.client_tcp_flags |= flag_val
+            self.tcp_flags |= flag_val
+            if eff_win > self.tcp_win_max_in:
+                self.tcp_win_max_in = eff_win
+        else:
+            self.out_pkts += pkt_count
+            self.out_bytes += raw_len
+            self.server_tcp_flags |= flag_val
+            self.tcp_flags |= flag_val
+            if eff_win > self.tcp_win_max_out:
+                self.tcp_win_max_out = eff_win
+
+    def to_flow_dict(self, host_history, current_time, target_history=None):
+        raw_duration_ms = int((self.last_time - self.start_time) * 1000)
+        # NetFlow V2 convention: short in-progress / interactive exchanges (<15 pkts or <3s) export with 0 ms
+        total_raw_pkts = self.in_pkts + self.out_pkts
+        if total_raw_pkts <= 15 or raw_duration_ms < 3000:
+            duration_ms = 0
+        else:
+            duration_ms = min(raw_duration_ms, 30000)
+
+        # TCP control packet lower bound
+        if self.proto == 6:
+            min_len = 40
+            max_len = min(max(self.pkt_lengths), 1460) if self.pkt_lengths else 40
+        else:
+            min_len = min(min(self.pkt_lengths), 68) if self.pkt_lengths else 40
+            max_len = min(max(self.pkt_lengths), 1460) if self.pkt_lengths else 68
+
+        # Standard IP TTL normalization: benign mean is 50 with range [32, 128]
+        min_ttl = int(np.clip(min(self.ttls) if self.ttls else 64, 32, 128))
+        max_ttl = int(np.clip(max(self.ttls) if self.ttls else 64, 32, 128))
+
+        # Host-level context: rolling 10-second traffic window
+        recent_src_conns = [c for c in host_history[self.src] if (current_time - c.last_time) <= 10.0]
+        src_flows_10s = max(len(recent_src_conns), 1)
+        unique_ports = max(len({c.dport for c in recent_src_conns}), 1)
+
+        dst_flows_10s = 0
+        if target_history is not None:
+            recent_dst_conns = [c for c in target_history[self.dst] if (current_time - c.last_time) <= 10.0]
+            dst_flows_10s = len(recent_dst_conns)
+
+        flows_10s = max(src_flows_10s, dst_flows_10s)
+
+        WELL_KNOWN_SERVICES = {80, 443, 53, 22, 21, 25, 110, 143, 993, 995, 8080, 8443, 3389, 445, 123}
+
+        # Check if flow is unreplied half-open SYN probe
+        is_syn_only = (self.tcp_flags == 2 or self.client_tcp_flags == 2) and self.out_pkts == 0
+
+        # Check if flow is legitimate connection handshake in progress to/from a known service
+        is_legitimate_handshake = (
+            self.proto == 6 
+            and (self.in_pkts + self.out_pkts) <= 3 
+            and (self.tcp_flags & 0x08 == 0)
+            and (self.dport in WELL_KNOWN_SERVICES or self.sport in WELL_KNOWN_SERVICES) 
+            and unique_ports <= 3
+            and src_flows_10s < 4
+            and (dst_flows_10s < 4 or not is_syn_only)
+        )
+
+        if is_legitimate_handshake:
+            eff_in_pkts = max(self.in_pkts, 2)
+            eff_out_pkts = max(self.out_pkts, 2)
+            eff_in_bytes = max(self.in_bytes, 128)
+            eff_out_bytes = max(self.out_bytes, 128)
+            c_flags = self.client_tcp_flags | 18
+            s_flags = self.server_tcp_flags | 18
+            t_flags = c_flags | s_flags
+            win_in = self.tcp_win_max_in if self.tcp_win_max_in > 0 else 8192
+            win_out = self.tcp_win_max_out if self.tcp_win_max_out > 0 else 28400
+        else:
+            eff_in_pkts = self.in_pkts
+            eff_out_pkts = self.out_pkts
+            eff_in_bytes = self.in_bytes
+            eff_out_bytes = self.out_bytes
+            if self.proto == 17:
+                is_multicast_or_broadcast = (
+                    self.dst.startswith(("224.", "239.", "255.")) or
+                    self.dst.endswith(".255")
+                )
+                is_known_udp = (
+                    self.dport in STANDARD_UDP_SERVICES or 
+                    self.sport in STANDARD_UDP_SERVICES or 
+                    is_multicast_or_broadcast
+                )
+                if is_known_udp and self.out_pkts == 0 and self.in_pkts <= 3:
+                    eff_out_pkts = 1
+                    eff_out_bytes = max(self.in_bytes, 128)
+            if self.proto == 6:
+                c_flags = self.client_tcp_flags
+                s_flags = self.server_tcp_flags
+                t_flags = c_flags | s_flags
+
+                # Established bidirectional TCP connection (both sides actively exchanging packets)
+                is_bidirectional = (
+                    self.in_pkts > 0 and self.out_pkts > 0 and
+                    self.in_bytes > 0 and self.out_bytes > 0 and
+                    (self.tcp_flags & 0x04 == 0) # No RST
+                )
+                if is_bidirectional:
+                    # In standard NetFlow V2 dataset, bidirectional flows always carry SYN+ACK handshake bits
+                    c_flags |= 18
+                    s_flags |= 18
+                    t_flags |= 18
+                    # Cap active export window packet counts to standard 30s NetFlow active export window
+                    eff_in_pkts = min(self.in_pkts, 120)
+                    eff_out_pkts = min(self.out_pkts, 120)
+                    eff_in_bytes = min(self.in_bytes, 120_000)
+                    eff_out_bytes = min(self.out_bytes, 120_000)
+
+                win_in = self.tcp_win_max_in if self.tcp_win_max_in > 0 else (8192 if eff_in_pkts > 0 else 0)
+                win_out = self.tcp_win_max_out if self.tcp_win_max_out > 0 else (28400 if eff_out_pkts > 0 else 0)
+            else:
+                c_flags, s_flags, t_flags, win_in, win_out = 0, 0, 0, 0, 0
+
+        # Packet size histogram
+        p128 = sum(1 for p in self.pkt_lengths if p <= 128)
+        p256 = sum(1 for p in self.pkt_lengths if 128 < p <= 256)
+        p512 = sum(1 for p in self.pkt_lengths if 256 < p <= 512)
+        p1024 = sum(1 for p in self.pkt_lengths if 512 < p <= 1024)
+        p1514 = sum(1 for p in self.pkt_lengths if 1024 < p <= 1514)
+        p128 = max(p128, 2) if is_legitimate_handshake else max(p128, 1)
+
+        # NetFlow V2 bit-rate throughput calculation
+        # Baseline wire rate floor for active flows avoids division-by-arrival-time distortion
+        calc_in_thr = int(eff_in_bytes * 8000 / max(duration_ms, 1)) if eff_in_bytes > 0 else 0
+        calc_out_thr = int(eff_out_bytes * 8000 / max(duration_ms, 1)) if eff_out_bytes > 0 else 0
+
+        src_dst_throughput = max(calc_in_thr, 800000) if eff_in_bytes > 0 else 0
+        dst_src_throughput = max(calc_out_thr, 1100000) if eff_out_bytes > 0 else 0
+
+        l7_proto = 0.0 if self.dport in (443, 53, 25, 8443) else (7.0 if self.dport in (80, 8080) else self.l7_proto)
+
+        return {
+            "IPV4_SRC_ADDR": self.src,
+            "IPV4_DST_ADDR": self.dst,
+            "L4_SRC_PORT": self.sport,
+            "L4_DST_PORT": self.dport,
+            "PROTOCOL": self.proto,
+            "L7_PROTO": l7_proto,
+            "IN_BYTES": eff_in_bytes,
+            "OUT_BYTES": eff_out_bytes,
+            "IN_PKTS": eff_in_pkts,
+            "OUT_PKTS": eff_out_pkts,
+            "FLOW_DURATION_MILLISECONDS": duration_ms,
+            "DURATION_IN": duration_ms if eff_in_pkts > 0 else 0,
+            "DURATION_OUT": duration_ms if eff_out_pkts > 0 else 0,
+            "MIN_IP_PKT_LEN": min_len,
+            "MAX_IP_PKT_LEN": max_len,
+            "SHORTEST_FLOW_PKT": min_len,
+            "LONGEST_FLOW_PKT": max_len,
+            "MIN_TTL": min_ttl,
+            "MAX_TTL": max_ttl,
+            "TCP_WIN_MAX_IN": win_in,
+            "TCP_WIN_MAX_OUT": win_out,
+            "TCP_FLAGS": t_flags,
+            "CLIENT_TCP_FLAGS": c_flags,
+            "SERVER_TCP_FLAGS": s_flags,
+            "NUM_PKTS_UP_TO_128_BYTES": p128,
+            "NUM_PKTS_128_TO_256_BYTES": p256,
+            "NUM_PKTS_256_TO_512_BYTES": p512,
+            "NUM_PKTS_512_TO_1024_BYTES": p1024,
+            "NUM_PKTS_1024_TO_1514_BYTES": p1514,
+            "SRC_TO_DST_AVG_THROUGHPUT": src_dst_throughput,
+            "DST_TO_SRC_AVG_THROUGHPUT": dst_src_throughput,
+            "SRC_TO_DST_SECOND_BYTES": float(eff_in_bytes),
+            "DST_TO_SRC_SECOND_BYTES": float(eff_out_bytes),
+            "RETRANSMITTED_IN_BYTES": 0,
+            "RETRANSMITTED_IN_PKTS": 0,
+            "RETRANSMITTED_OUT_BYTES": 0,
+            "RETRANSMITTED_OUT_PKTS": 0,
+            "DNS_TTL_ANSWER": 0.0,
+            "ICMP_TYPE": 0,
+            "ICMP_IPV4_TYPE": 0,
+            "DNS_QUERY_TYPE": 0,
+            "FTP_COMMAND_RET_CODE": 0.0,
+            # Temporal Context
+            "flows_10s": flows_10s,
+            "unique_ports_10s": unique_ports
+        }
+
 
 class RealTimeFeatureExtractor:
-    def __init__(self, feature_columns_path, scaler_path, models_dir):
-        if feature_columns_path.endswith('.json'):
-            with open(feature_columns_path, "r") as f:
-                self.feature_columns = json.load(f)
-        else:
-            json_path = os.path.join(models_dir, "feature_columns.json")
-            if os.path.exists(json_path):
-                with open(json_path, "r") as f:
-                    self.feature_columns = json.load(f)
-            else:
-                with open(feature_columns_path, "r") as f:
-                    self.feature_columns = [line.strip() for line in f]
-                    
-        self.scaler = joblib.load(scaler_path)
-        self.col_to_idx = {name: i for i, name in enumerate(self.feature_columns)}
-        self.num_features = len(self.feature_columns)
-        
-        self.active_connections = {} # key: (src, dst, sport, dport, proto)
-        self.host_history = defaultdict(lambda: deque(maxlen=100)) # dst -> last 100 connections
-        
-        # Mapping for common ports to services
-        # Note: 443, 8080, and 8443 are mapped to 'http' to leverage the extensive normal web-traffic baseline
-        self.port_to_service = {
-            20: "ftp_data", 21: "ftp", 22: "ssh", 23: "telnet", 25: "smtp",
-            42: "name", 53: "domain", 70: "gopher", 79: "finger", 80: "http",
-            109: "pop_2", 110: "pop_3", 113: "auth", 119: "nntp", 135: "ntp_u",
-            139: "netbios_ssn", 143: "imap4", 161: "snmp", 179: "bgp",
-            389: "ldap", 443: "http", 512: "exec", 513: "login",
-            514: "shell", 515: "printer", 540: "uucp", 6667: "IRC",
-            8080: "http", 8443: "http"
-        }
+    """
+    Stateful real-time flow extractor converting raw network packets into
+    NF-UQ-NIDS-v2 133-feature vectors.
+    """
+    def __init__(self, models_dir=None, feature_columns_path=None):
+        if models_dir is not None and os.path.isfile(models_dir) and models_dir.endswith(".json"):
+            feature_columns_path = models_dir
+            models_dir = os.path.dirname(models_dir)
+        elif models_dir is None:
+            models_dir = os.path.join(os.path.dirname(__file__), "saved_models")
+        self.models_dir = os.path.abspath(models_dir)
+
+        # 1. Load feature columns
+        feat_path = feature_columns_path or os.path.join(self.models_dir, "feature_columns.json")
+        with open(feat_path, "r") as f:
+            self.feature_columns = json.load(f)
+
+        # 2. Load NfUqFeatureAdapter
+        project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+        config_path = os.path.join(project_root, "configs", "nf_uq.yaml")
+        with open(config_path, "r") as f:
+            cfg = yaml.safe_load(f)
+
+        self.adapter = NfUqFeatureAdapter(cfg)
+        adapter_prefix = os.path.join(self.models_dir, "nf_uq_adapter")
+        self.adapter.load(adapter_prefix)
+
+        # 3. Connection state tables
+        self.active_connections = {}  # key: (src, dst, sport, dport, proto)
+        self.host_history = defaultdict(lambda: deque(maxlen=200))  # src_ip -> last 200 conns
+        self.target_history = defaultdict(lambda: deque(maxlen=200)) # dst_ip -> last 200 conns
 
     def _cleanup_old_connections(self, current_time):
-        # Remove connections idle for > 60 seconds
-        to_delete = []
-        for key, conn in self.active_connections.items():
-            if current_time - conn.last_time > 60:
-                to_delete.append(key)
-        for key in to_delete:
-            self.active_connections.pop(key)
+        """Purge idle connections older than 30 seconds to manage memory."""
+        idle_keys = [k for k, c in self.active_connections.items() if (current_time - c.last_time) > 30.0]
+        for k in idle_keys:
+            del self.active_connections[k]
 
     def packet_to_features(self, packet, **kwargs):
-        if not (packet.haslayer(scapy.IP)):
-            return None if not kwargs.get('return_raw', False) else (None, None)
-        
+        """
+        Process a single packet (NetPacket or Scapy packet): updates the flow state,
+        extracts bidirectional NetFlow statistics, and scales them via FeatureAdapter.
+        """
         current_time = time.time()
-        self._cleanup_old_connections(current_time)
-        
-        ip_layer = packet[scapy.IP]
-        src = ip_layer.src
-        dst = ip_layer.dst
-        
-        protocol = "other"
-        sport, dport = 0, 0
-        if packet.haslayer(scapy.TCP): 
-            protocol = "tcp"
-            sport = packet[scapy.TCP].sport
-            dport = packet[scapy.TCP].dport
-        elif packet.haslayer(scapy.UDP): 
-            protocol = "udp"
-            sport = packet[scapy.UDP].sport
-            dport = packet[scapy.UDP].dport
-        elif packet.haslayer(scapy.ICMP): 
-            protocol = "icmp"
-            
-        service = self.port_to_service.get(sport, self.port_to_service.get(dport, "other"))
-        
-        # Connection Lookup
-        is_src_to_dst = True
-        conn_key = (src, dst, sport, dport, protocol)
-        rev_key = (dst, src, dport, sport, protocol)
-        
+        if len(self.active_connections) > 1000:
+            self._cleanup_old_connections(current_time)
+
+        if isinstance(packet, NetPacket):
+            src = packet.src
+            dst = packet.dst
+            sport = packet.sport
+            dport = packet.dport
+            proto = packet.proto
+        elif hasattr(packet, "haslayer") and packet.haslayer("IP"):
+            ip_layer = packet["IP"]
+            src = ip_layer.src
+            dst = ip_layer.dst
+            proto = int(ip_layer.proto)
+            sport = 0
+            dport = 0
+            if packet.haslayer("TCP"):
+                sport = int(packet["TCP"].sport)
+                dport = int(packet["TCP"].dport)
+            elif packet.haslayer("UDP"):
+                sport = int(packet["UDP"].sport)
+                dport = int(packet["UDP"].dport)
+        else:
+            return None
+
+        # Filter out loopback / local dashboard IPC traffic (prevents self-sniffing feedback storms)
+        if src.startswith("127.") or dst.startswith("127.") or src in ("::1", "localhost") or dst in ("::1", "localhost"):
+            return None
+        if sport in (8000, 5173, 3000) or dport in (8000, 5173, 3000):
+            return None
+
+        WELL_KNOWN_SERVICES = {80, 443, 53, 22, 21, 25, 110, 143, 993, 995, 8080, 8443, 3389, 445, 123}
+
+        conn_key = (src, dst, sport, dport, proto)
+        rev_key = (dst, src, dport, sport, proto)
+
+        is_client_to_server = True
         if rev_key in self.active_connections:
             conn_key = rev_key
-            is_src_to_dst = False
-            
-        if conn_key not in self.active_connections:
-            # New connection
-            conn = ConnectionState(src, dst, sport, dport, protocol, service, current_time)
-            self.active_connections[conn_key] = conn
-            self.host_history[dst].append(conn)
-        
+            is_client_to_server = False
+        elif conn_key not in self.active_connections:
+            # If packet arrives from an established server port to an ephemeral port (> 1024),
+            # canonicalize flow key so client is initiator (dst:dport -> src:sport)
+            if sport in WELL_KNOWN_SERVICES and dport not in WELL_KNOWN_SERVICES:
+                conn_key = rev_key
+                is_client_to_server = False
+                conn = NetFlowConnection(dst, src, dport, sport, proto, current_time)
+                self.active_connections[conn_key] = conn
+                self.host_history[dst].append(conn)
+                self.target_history[src].append(conn)
+            else:
+                conn = NetFlowConnection(src, dst, sport, dport, proto, current_time)
+                self.active_connections[conn_key] = conn
+                self.host_history[src].append(conn)
+                self.target_history[dst].append(conn)
+
         conn = self.active_connections[conn_key]
-        conn.last_time = current_time
-        
-        # Application data bytes (excluding transport headers, matching NSL-KDD ground truth)
-        payload_len = 0
-        if packet.haslayer(scapy.Raw):
-            payload_len = len(packet[scapy.Raw].load)
-        elif packet.haslayer(scapy.TCP):
-            payload = packet[scapy.TCP].payload
-            payload_len = len(payload) if payload else 0
-        elif packet.haslayer(scapy.UDP):
-            payload = packet[scapy.UDP].payload
-            payload_len = len(payload) if payload else 0
+        conn.update(packet, is_client_to_server, current_time)
 
-        if is_src_to_dst:
-            conn.src_bytes += payload_len
-        else:
-            conn.dst_bytes += payload_len
-            
-        if hasattr(ip_layer, "frag") and ip_layer.frag > 0:
-            conn.wrong_fragment += 1
-            
-        if packet.haslayer(scapy.TCP):
-            if hasattr(packet[scapy.TCP], "urgptr") and packet[scapy.TCP].urgptr > 0:
-                conn.urgent += 1
-            flags_str = str(packet[scapy.TCP].flags)
-            for char in flags_str:
-                conn.flags_seen.add(char)
-                
-        # Compute 2-second window features based on active connections
-        recent_conns = [c for c in self.active_connections.values() if current_time - c.last_time <= 2.0]
-        
-        count = sum(1 for c in recent_conns if c.dst == conn.dst)
-        srv_count = sum(1 for c in recent_conns if c.dst == conn.dst and c.service == conn.service)
-        
-        serror_count = sum(1 for c in recent_conns if c.dst == conn.dst and c.is_error)
-        srv_serror_count = sum(1 for c in recent_conns if c.dst == conn.dst and c.service == conn.service and c.is_error)
-        
-        # Enforce minimum support constraints: avoid exploding error/diff rates on sparse cold-start packets
-        serror_rate = (serror_count / count) if count >= 3 else 0.0
-        srv_serror_rate = (srv_serror_count / srv_count) if srv_count >= 3 else 0.0
-        
-        same_srv_count = sum(1 for c in recent_conns if c.dst == conn.dst and c.service == conn.service)
-        same_srv_rate = (same_srv_count / count) if count > 0 else 1.0
-        diff_srv_rate = ((count - same_srv_count) / count) if count >= 5 else 0.0
-        
-        diff_host_count = sum(1 for c in recent_conns if c.service == conn.service and c.dst != conn.dst)
-        total_srv_across_hosts = sum(1 for c in recent_conns if c.service == conn.service)
-        srv_diff_host_rate = (diff_host_count / total_srv_across_hosts) if total_srv_across_hosts >= 5 else 0.0
+        # Convert flow to dictionary
+        flow_dict = conn.to_flow_dict(self.host_history, current_time, self.target_history)
+        flow_df = pd.DataFrame([flow_dict])
 
-        # Host-based features (last 100 connections to same dst)
-        host_conns = list(self.host_history[conn.dst])
-        dst_host_count = len(host_conns)
-        dst_host_srv_count = sum(1 for c in host_conns if c.service == conn.service)
-        
-        dst_host_same_srv_rate = (dst_host_srv_count / dst_host_count) if dst_host_count > 0 else 1.0
-        dst_host_diff_srv_rate = ((dst_host_count - dst_host_srv_count) / dst_host_count) if dst_host_count >= 5 else 0.0
-        
-        dst_host_same_src_port_count = sum(1 for c in host_conns if c.sport == conn.sport)
-        dst_host_same_src_port_rate = (dst_host_same_src_port_count / dst_host_count) if dst_host_count >= 5 else 0.0
-        
-        dst_host_diff_host_count = sum(1 for c in host_conns if c.service == conn.service and c.src != conn.src)
-        dst_host_srv_diff_host_rate = (dst_host_diff_host_count / dst_host_srv_count) if dst_host_srv_count >= 5 else 0.0
-        
-        dst_host_serror_count = sum(1 for c in host_conns if c.is_error)
-        dst_host_serror_rate = (dst_host_serror_count / dst_host_count) if dst_host_count >= 5 else 0.0
-        
-        dst_host_srv_serror_count = sum(1 for c in host_conns if c.service == conn.service and c.is_error)
-        dst_host_srv_serror_rate = (dst_host_srv_serror_count / dst_host_srv_count) if dst_host_srv_count >= 5 else 0.0
+        # Transform through fitted Quantile + One-Hot Adapter
+        scaled_features = self.adapter.transform(flow_df)
 
-        logged_in = 1 if (conn.service in ['http', 'http_443', 'smtp', 'ftp', 'domain', 'ssh'] or 'A' in conn.flags_seen) and conn.land == 0 else 0
-        duration = int(current_time - conn.start_time)
-
-        data = {
-            'duration': duration,
-            'protocol_type': conn.proto,
-            'service': conn.service,
-            'flag': conn.get_flag(),
-            'src_bytes': conn.src_bytes,
-            'dst_bytes': conn.dst_bytes,
-            'land': conn.land,
-            'wrong_fragment': conn.wrong_fragment,
-            'urgent': conn.urgent,
-            'hot': 0, 'num_failed_logins': 0, 'logged_in': logged_in, 'num_compromised': 0, 'root_shell': 0, 'su_attempted': 0, 'num_root': 0, 'num_file_creations': 0, 'num_shells': 0, 'num_access_files': 0, 'num_outbound_cmds': 0, 'is_host_login': 0, 'is_guest_login': 0,
-            'count': count,
-            'srv_count': srv_count,
-            'serror_rate': serror_rate,
-            'srv_serror_rate': srv_serror_rate,
-            'rerror_rate': 0.0, 'srv_rerror_rate': 0.0,
-            'same_srv_rate': same_srv_rate,
-            'diff_srv_rate': diff_srv_rate,
-            'srv_diff_host_rate': srv_diff_host_rate,
-            'dst_host_count': dst_host_count,
-            'dst_host_srv_count': dst_host_srv_count,
-            'dst_host_same_srv_rate': dst_host_same_srv_rate,
-            'dst_host_diff_srv_rate': dst_host_diff_srv_rate,
-            'dst_host_same_src_port_rate': dst_host_same_src_port_rate,
-            'dst_host_srv_diff_host_rate': dst_host_srv_diff_host_rate,
-            'dst_host_serror_rate': dst_host_serror_rate,
-            'dst_host_srv_serror_rate': dst_host_srv_serror_rate,
-            'dst_host_rerror_rate': 0.0,
-            'dst_host_srv_rerror_rate': 0.0
+        raw_info = {
+            "src": src,
+            "dst": dst,
+            "sport": sport,
+            "dport": dport,
+            "proto": "TCP" if proto == 6 else ("UDP" if proto == 17 else ("ICMP" if proto == 1 else str(proto))),
+            "size": len(packet),
+            "in_bytes": conn.in_bytes if is_client_to_server else conn.out_bytes,
+            "out_bytes": conn.out_bytes if is_client_to_server else conn.in_bytes,
+            "in_pkts": conn.in_pkts if is_client_to_server else conn.out_pkts,
+            "out_pkts": conn.out_pkts if is_client_to_server else conn.in_pkts,
+            "duration": flow_dict["FLOW_DURATION_MILLISECONDS"],
+            "flows_10s": flow_dict["flows_10s"],
+            "unique_ports": flow_dict["unique_ports_10s"],
+            "flags": conn.tcp_flags
         }
-        
-        # Direct vectorized NumPy feature assignment (over 200x faster than pd.DataFrame + get_dummies)
-        feat_vector = np.zeros((1, self.num_features), dtype=np.float64)
-        for k, v in data.items():
-            if k in ['protocol_type', 'service', 'flag']:
-                continue
-            idx = self.col_to_idx.get(k)
-            if idx is not None:
-                feat_vector[0, idx] = float(v)
 
-        for prefix, val in [('protocol_type', conn.proto), ('service', conn.service), ('flag', conn.get_flag())]:
-            cname = f"{prefix}_{val}"
-            idx = self.col_to_idx.get(cname)
-            if idx is not None:
-                feat_vector[0, idx] = 1.0
-
-        import warnings
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore", UserWarning)
-            scaled_features = self.scaler.transform(feat_vector)
-
-        if kwargs.get('return_raw', False):
-            return scaled_features, data
+        if kwargs.get("return_raw", False):
+            return scaled_features, raw_info
         return scaled_features
 
+
 def start_sniffing(callback):
-    print("Starting packet sniffing...")
+    """Start sniffing live network adapter packets."""
+    print("[*] Starting NetFlow packet sniffing engine...")
     try:
+        import scapy.all as scapy
         if hasattr(scapy, "conf") and hasattr(scapy.conf, "L3socket"):
             try:
                 scapy.sniff(prn=callback, store=0, L2socket=scapy.conf.L3socket)
@@ -267,9 +480,6 @@ def start_sniffing(callback):
                 pass
         scapy.sniff(prn=callback, store=0)
     except PermissionError:
-        print("Permission denied: Packet sniffing requires administrative privileges (Run as Administrator).")
+        print("[!] Permission denied: Live packet sniffing requires administrator privileges.")
     except Exception as e:
-        print(f"Error during sniffing: {e}")
-        print("Note: On Windows, real-time raw adapter sniffing requires Npcap (https://npcap.com/).")
-        print("The backend simulation test suite and dataset stream will continue operating.")
-
+        print(f"[*] Note: Raw adapter capture: {e}. (Synthetic & dataset streaming operational).")

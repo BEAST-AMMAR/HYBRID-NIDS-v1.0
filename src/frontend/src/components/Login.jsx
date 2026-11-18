@@ -4,8 +4,8 @@ import { useNavigate, Link, useLocation } from 'react-router-dom';
 
 const Login = ({ setToken }) => {
     const location = useLocation();
-    const [email, setEmail] = useState('');
-    const [password, setPassword] = useState('');
+    const [email, setEmail] = useState('admin');
+    const [password, setPassword] = useState('admin');
     const [error, setError] = useState('');
     const navigate = useNavigate();
 
@@ -45,7 +45,22 @@ const Login = ({ setToken }) => {
     return (
         <div className="min-h-screen flex items-center justify-center bg-gray-900">
             <div className="bg-gray-800 p-8 rounded-lg shadow-xl w-96">
-                <h2 className="text-3xl font-bold text-white mb-6 text-center">NIDS Login</h2>
+                <h2 className="text-3xl font-bold text-white mb-4 text-center">NIDS Login</h2>
+                
+                <div className="mb-5 p-3 bg-blue-950/60 border border-blue-500/40 rounded-lg text-xs text-blue-200 flex justify-between items-center shadow-inner">
+                    <div>
+                        <p className="font-semibold text-blue-300">Default Admin Credentials</p>
+                        <p className="text-[11px] text-gray-400 mt-0.5">User: <code className="text-white bg-blue-900/60 px-1 rounded">admin</code> | Pass: <code className="text-white bg-blue-900/60 px-1 rounded">admin</code></p>
+                    </div>
+                    <button 
+                        type="button" 
+                        onClick={() => { setEmail('admin'); setPassword('admin'); }}
+                        className="text-xs bg-blue-600 hover:bg-blue-500 text-white font-medium px-2.5 py-1 rounded transition shadow-sm"
+                    >
+                        Auto-Fill
+                    </button>
+                </div>
+
                 {error && <p className="text-red-500 mb-4 text-center">{error}</p>}
                 <form onSubmit={handleSubmit}>
                     <div className="mb-4">

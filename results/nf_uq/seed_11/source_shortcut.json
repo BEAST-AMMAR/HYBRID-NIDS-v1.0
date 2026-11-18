@@ -1,0 +1,10 @@
+{
+  "source_predict_accuracy": 0.9905733333333333,
+  "n_sources": 4,
+  "sources": [
+    "NF-BoT-IoT-v2",
+    "NF-CSE-CIC-IDS2018-v2",
+    "NF-ToN-IoT-v2",
+    "NF-UNSW-NB15-v2"
+  ]
+}

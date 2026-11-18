@@ -1,126 +1,255 @@
 [
   {
-    "attack_type": "DoS",
-    "name": "Denial of Service",
-    "indicators": [
-      "high src_bytes",
-      "high count",
-      "high srv_count",
-      "high serror_rate",
-      "high srv_serror_rate"
-    ],
-    "description": "Denial-of-Service attacks flood a target system with excessive traffic, causing service disruption and preventing legitimate access.",
-    "feature_explanation": {
-      "src_bytes": "Large volume of data sent from source indicates flooding behavior.",
-      "count": "High number of connections suggests repeated requests to overwhelm the system.",
-      "serror_rate": "High SYN error rate indicates incomplete TCP handshakes typical in DoS attacks."
-    }
-  },
-
-  {
     "attack_type": "DDoS",
-    "name": "Distributed Denial of Service",
+    "name": "Distributed Denial of Service (DDoS)",
+    "category": "ddos",
     "indicators": [
-      "high dst_host_count",
-      "high dst_host_srv_count",
-      "high src_bytes",
-      "high count"
+      "High IN_PKTS and IN_BYTES in short FLOW_DURATION_MILLISECONDS",
+      "Sustained high SRC_TO_DST_AVG_THROUGHPUT across distributed source IPs",
+      "SYN / ACK flood flags in TCP_FLAGS or high-rate UDP datagram bursts",
+      "High flows_10s from distributed origins converging on target port"
     ],
-    "description": "Distributed DoS attacks originate from multiple sources targeting a single system, overwhelming it with massive traffic.",
-    "feature_explanation": {
-      "dst_host_count": "Large number of connections to a single host indicates coordinated attack.",
-      "src_bytes": "High incoming data volume suggests traffic flooding."
-    }
+    "description": "Distributed Denial of Service (DDoS) flood overwhelming network infrastructure or services across coordinated distributed nodes.",
+    "mitigation": "Activate upstream BGP Anycast routing, rate-limit SYN and UDP packets at border firewall, and apply flow scrubbing."
   },
-
   {
-    "attack_type": "Probe",
-    "name": "Network Scanning",
+    "attack_type": "DoS",
+    "name": "Denial of Service (DoS)",
+    "category": "dos",
     "indicators": [
-      "high diff_srv_rate",
-      "high dst_host_count",
-      "low src_bytes",
-      "high srv_diff_host_rate"
+      "Extremely high packet count IN_PKTS targeting port 80/443",
+      "Low packet payload sizes (NUM_PKTS_UP_TO_128_BYTES)",
+      "Anomalous flow duration with incomplete handshakes or resource starvation"
     ],
-    "description": "Probe attacks scan networks to discover open ports and services, often as a precursor to further attacks.",
-    "feature_explanation": {
-      "diff_srv_rate": "Connections to multiple services indicate scanning behavior.",
-      "srv_diff_host_rate": "Connections to multiple hosts suggest reconnaissance activity."
-    }
+    "description": "Denial of Service (DoS) attack attempting to deplete host sockets, CPU, or memory buffers by flooding target ports.",
+    "mitigation": "Enable TCP SYN cookies on target hosts, configure connection drop timeouts, and apply ingress rate limiting."
   },
-
   {
-    "attack_type": "PortScan",
-    "name": "Port Scanning",
+    "attack_type": "scanning",
+    "name": "Port Scanning & Network Enumeration",
+    "category": "scanning",
     "indicators": [
-      "high dst_host_count",
-      "high diff_srv_rate",
-      "low duration"
+      "High unique_ports_10s from a single source IP",
+      "Short flow durations with single SYN packets (IN_PKTS = 1, in_bytes < 100)",
+      "Zero or minimal OUT_BYTES (unresponsive or closed ports)"
     ],
-    "description": "Port scanning involves probing multiple ports on a host to identify open services.",
-    "feature_explanation": {
-      "dst_host_count": "Multiple connection attempts to the same host.",
-      "diff_srv_rate": "Different services accessed indicates scanning."
-    }
+    "description": "Reconnaissance scan probing multiple L4 destination ports to discover active daemons, listening services, and firewall configurations.",
+    "mitigation": "Temporarily quarantine source IP at perimeter firewall, implement port knocking, and hide unused listening ports."
   },
-
   {
-    "attack_type": "R2L",
-    "name": "Remote to Local Attack",
+    "attack_type": "Reconnaissance",
+    "name": "Network Discovery & Reconnaissance",
+    "category": "reconnaissance",
     "indicators": [
-      "high num_failed_logins",
-      "logged_in = 0",
-      "is_guest_login = 1"
+      "High sweep rate across destination IPs on internal subnet",
+      "ICMP Echo, ARP sweeps, or non-standard probe protocols",
+      "Repeated discovery queries on DNS / NetBIOS / SMB"
     ],
-    "description": "R2L attacks attempt unauthorized access to a system from a remote machine.",
-    "feature_explanation": {
-      "num_failed_logins": "Repeated login failures indicate brute-force attempts.",
-      "logged_in": "Failed authentication attempts signal intrusion attempts."
-    }
+    "description": "Network mapping activity sweeping subnet ranges to map network topology, active hosts, and routing infrastructure.",
+    "mitigation": "Block external ICMP sweeps, segregate internal VLANs, and deploy network decoy honeypots."
   },
-
   {
-    "attack_type": "BruteForce",
-    "name": "Brute Force Login",
+    "attack_type": "xss",
+    "name": "Cross-Site Scripting (XSS)",
+    "category": "xss",
     "indicators": [
-      "high num_failed_logins",
-      "low success rate",
-      "logged_in = 0"
+      "Atypical request lengths on Web application ports (80, 443)",
+      "Deviation from normal HTTP client traffic latent distribution",
+      "Repeated client submissions with script tag / DOM injection patterns"
     ],
-    "description": "Brute force attacks attempt multiple password combinations to gain unauthorized access.",
-    "feature_explanation": {
-      "num_failed_logins": "Multiple failed login attempts indicate password guessing.",
-      "logged_in": "Failure to log in confirms unsuccessful authentication attempts."
-    }
+    "description": "Injection of malicious client-side scripts targeting browser execution contexts of other application users.",
+    "mitigation": "Implement Content Security Policy (CSP) headers, sanitize HTML context inputs, and configure WAF inspection."
   },
-
   {
-    "attack_type": "U2R",
-    "name": "User to Root",
+    "attack_type": "password",
+    "name": "Password Cracking & Credential Spraying",
+    "category": "password",
     "indicators": [
-      "root_shell = 1",
-      "num_root high",
-      "num_file_creations high"
+      "Sequential login attempts to web or authentication endpoints",
+      "Consistent small payload sizes (600-900 bytes) across multiple flows",
+      "Repeated connection attempts from single or coordinated sources to port 80/443"
     ],
-    "description": "U2R attacks escalate privileges after gaining initial access.",
-    "feature_explanation": {
-      "root_shell": "Root shell access indicates privilege escalation.",
-      "num_root": "Multiple root-level operations suggest compromise."
-    }
+    "description": "Automated password guessing, credential stuffing, or dictionary attacks targeting web authentication portals.",
+    "mitigation": "Enforce account lockouts, deploy CAPTCHA after failed attempts, and mandate multi-factor authentication (MFA)."
   },
-
   {
-    "attack_type": "Normal",
-    "name": "Normal Traffic",
+    "attack_type": "injection",
+    "name": "SQL & Command Injection",
+    "category": "injection",
     "indicators": [
-      "balanced src_bytes",
-      "low error rates",
-      "stable connection patterns"
+      "Anomalous HTTP payload sizes on Web application ports (80, 443)",
+      "Unusually high client request payload length compared to normal GET/POST requests",
+      "High Autoencoder feature error on IN_BYTES and LONGEST_FLOW_PKT"
     ],
-    "description": "Normal network traffic follows expected patterns with low error rates and consistent behavior.",
-    "feature_explanation": {
-      "serror_rate": "Low error rates indicate healthy connections.",
-      "count": "Moderate connection counts indicate normal usage."
-    }
+    "description": "Infiltration of malicious code fragments (SQL Injection, OS command injection, LDAP injection) through application data inputs.",
+    "mitigation": "Use parameterized queries, enforce strict input validation, and enable WAF signature matching."
+  },
+  {
+    "attack_type": "Bot",
+    "name": "Botnet Command & Control (C2)",
+    "category": "bot",
+    "indicators": [
+      "Periodic small byte beacons on TLS/HTTPS or high ports (e.g. 8080)",
+      "Persistent keep-alive flows with anomalous latent manifold position",
+      "Repeated communication with non-standard external IP endpoints"
+    ],
+    "description": "Botnet agent establishing automated periodic command-and-control communication to receive instructions or exfiltrate state.",
+    "mitigation": "Isolate the infected endpoint from the local network, inspect DNS logs for DGA domains, and terminate unauthorized sockets."
+  },
+  {
+    "attack_type": "Brute Force",
+    "name": "Authentication Brute Force",
+    "category": "brute_force",
+    "indicators": [
+      "Rapid succession of flows to administrative ports (22 SSH, 3389 RDP, 21 FTP)",
+      "High IN_PKTS (> 30 pkts/flow) and IN_BYTES (> 5,000 bytes) during repeated handshakes",
+      "Short flow durations followed by repeated reconnection attempts"
+    ],
+    "description": "Automated dictionary attack or credential stuffing attempting to crack authentication credentials on network services.",
+    "mitigation": "Enforce Fail2Ban or IP lockout thresholds, mandate MFA, and disable public password logins in favor of SSH keys."
+  },
+  {
+    "attack_type": "Infilteration",
+    "name": "Network Infiltration & Lateral Movement (Infilteration)",
+    "category": "infilteration",
+    "indicators": [
+      "Unusual intra-subnet traffic between internal workstations",
+      "DNS tunneling or non-standard protocol encapsulation on UDP port 53",
+      "Anomalous client-server role reversal on internal IP addresses"
+    ],
+    "description": "Post-compromise network infiltration where an adversary moves laterally through internal systems to compromise internal infrastructure.",
+    "mitigation": "Implement zero-trust network segmentation, audit internal East-West traffic, and isolate compromised internal endpoints."
+  },
+  {
+    "attack_type": "Exploits",
+    "name": "Exploits & Vulnerability Exploitation",
+    "category": "exploits",
+    "indicators": [
+      "Extremely large payload transfers (mean IN_BYTES > 40,000 bytes)",
+      "Atypical TCP window size or out-of-order segment flags",
+      "High reconstruction MSE in application payload size features and LONGEST_FLOW_PKT"
+    ],
+    "description": "Transmission of structured malformed payloads targeting known application vulnerabilities (CVEs) or buffer overflows.",
+    "mitigation": "Apply vendor security patches, deploy Web Application Firewall (WAF) inspection rules, and inspect host execution logs."
+  },
+  {
+    "attack_type": "Fuzzers",
+    "name": "Protocol Fuzzing & Fuzzers",
+    "category": "fuzzers",
+    "indicators": [
+      "Randomized packet sizes across consecutive flows on routing or application ports (179 BGP, 80)",
+      "Unusual combinations of TCP flags and invalid header fields",
+      "High reconstruction error across both ingress and egress dimensions"
+    ],
+    "description": "Automated transmission of semi-random, boundary-testing payloads designed to uncover zero-day crash conditions and memory faults.",
+    "mitigation": "Filter non-RFC compliant packets at the network layer and monitor service daemon health for memory faults."
+  },
+  {
+    "attack_type": "Backdoor",
+    "name": "Backdoor Access & Reverse Shell",
+    "category": "backdoor",
+    "indicators": [
+      "Interactive typing pauses and prolonged connection durations on non-standard ports (8080)",
+      "High OUT_BYTES relative to low IN_BYTES on non-standard ports",
+      "Outbound connection initiated from internal server to unknown public IP"
+    ],
+    "description": "Unsanctioned remote access channel or reverse shell allowing external threat actors covert command execution inside the network.",
+    "mitigation": "Enforce strict outbound egress firewall filtering, terminate unauthorized interactive sessions, and run memory rootkit scanners."
+  },
+  {
+    "attack_type": "Generic",
+    "name": "Generic Cryptographic & Protocol Violation",
+    "category": "generic",
+    "indicators": [
+      "Anomalous packet structures on UDP port 53 or transport tunnels",
+      "Cipher collision or non-conforming protocol state transitions",
+      "Multi-dimensional deviation in latent manifold density"
+    ],
+    "description": "Generic protocol violations, block cipher attacks, or non-standard protocol encapsulations deviating from RFC specifications.",
+    "mitigation": "Apply protocol strictness verification at border gateways and inspect encapsulated packet payloads."
+  },
+  {
+    "attack_type": "mitm",
+    "name": "Man-In-The-Middle (MITM) Interception",
+    "category": "mitm",
+    "indicators": [
+      "Inconsistent TTL values (MIN_TTL vs MAX_TTL)",
+      "Duplicated or conflicting flow records with altered MAC/IP bindings",
+      "High retransmission count (RETRANSMITTED_IN_BYTES) and altered DNS responses"
+    ],
+    "description": "Adversary positioning between communicating network entities via ARP spoofing, DNS cache poisoning, or rogue gateways.",
+    "mitigation": "Enable Dynamic ARP Inspection (DAI), enforce 802.1X port authentication, and mandate end-to-end TLS encryption."
+  },
+  {
+    "attack_type": "ransomware",
+    "name": "Ransomware Propagation & Lateral Movement",
+    "category": "ransomware",
+    "indicators": [
+      "Sudden surge in SMB (Port 445) or RPC traffic to internal endpoints",
+      "Rapid file transfer volume (high IN_BYTES and OUT_BYTES)",
+      "High latent Mahalanobis distance indicating deviation from baseline workstation behavior"
+    ],
+    "description": "Malicious automated encryption activity rapidly spreading across network shares and staging extortion payloads.",
+    "mitigation": "Immediately isolate affected subnets, disable SMBv1/v2 across domain endpoints, and initiate immutable snapshot restoration."
+  },
+  {
+    "attack_type": "Analysis",
+    "name": "Security Analysis & Automated Scanning",
+    "category": "analysis",
+    "indicators": [
+      "Automated security scanner signatures (Nessus, Nikto, OpenVAS)",
+      "Low packet count per flow with rapid successive endpoint probes",
+      "Anomalous combinations of probe port requests and web spidering"
+    ],
+    "description": "Automated vulnerability scanner or web crawler analyzing network attack surface, application headers, and exposed endpoints.",
+    "mitigation": "Enforce web crawler restrictions via robots.txt/WAF, monitor administrative IP whitelists, and rate-limit scanner probes."
+  },
+  {
+    "attack_type": "Theft",
+    "name": "Data Exfiltration & Theft",
+    "category": "theft",
+    "indicators": [
+      "Massive outward data volume (mean IN_BYTES > 1.5 MB per flow)",
+      "Sustained high SRC_TO_DST_AVG_THROUGHPUT over prolonged flow duration",
+      "Unusual transfer volume on storage, cloud, or covert tunneling channels"
+    ],
+    "description": "Unauthorized transfer of proprietary, credential, or sensitive data from internal systems to external recipient infrastructure.",
+    "mitigation": "Block egress traffic to untrusted cloud services, enable Data Loss Prevention (DLP) proxies, and throttle unusual outbound flows."
+  },
+  {
+    "attack_type": "Shellcode",
+    "name": "Shellcode Injection & Execution",
+    "category": "shellcode",
+    "indicators": [
+      "Precise binary packet size signatures matching exploit staging buffers (e.g. port 1347)",
+      "High latent Mahalanobis distance from clean flow profiles",
+      "Sudden connection initiation following an inbound buffer delivery"
+    ],
+    "description": "Raw machine code injected into process memory during exploitation to open command access or download secondary payloads.",
+    "mitigation": "Enforce ASLR and DEP on target servers, terminate offending process tree, and audit memory segments."
+  },
+  {
+    "attack_type": "Worms",
+    "name": "Self-Propagating Network Worms",
+    "category": "worms",
+    "indicators": [
+      "Massive rapid proliferation of outgoing connections to neighboring IPs on port 80/445",
+      "Identical flow sizes across dozens of target endpoints",
+      "High TCP_FLAGS indicating continuous automated connection attempts"
+    ],
+    "description": "Autonomous malicious payload replicating across local network subnets by exploiting unpatched network vulnerabilities.",
+    "mitigation": "Quarantine the originating network segment, apply emergency zero-day firewall blocks, and inspect host processes."
+  },
+  {
+    "attack_type": "general_anomaly",
+    "name": "Statistical NetFlow Anomaly",
+    "category": "general_anomaly",
+    "indicators": [
+      "High hybrid score across Autoencoder and Latent Isolation Forest",
+      "Multi-dimensional deviation in packet length and duration distributions",
+      "Significant distance from benign topological baseline manifold"
+    ],
+    "description": "Multi-variate statistical anomaly significantly exceeding the calibrated normal baseline threshold across NetFlow dimensions.",
+    "mitigation": "Review network flow details, verify host process integrity, and capture full packet PCAP for forensic inspection."
   }
 ]

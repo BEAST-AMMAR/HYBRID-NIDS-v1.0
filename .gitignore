@@ -41,3 +41,11 @@ npm-debug.log*
 # KB Index (can be rebuilt)
 # kb_index/embeddings.npy
 # kb_index/nn.joblib
+
+# Large Datasets (NF-UQ-NIDS-v2, raw CSVs and Parquet partitions)
+data/NF UQ NIDS V2/
+data/*.csv
+data/**/*.csv
+*.parquet
+data/**/*.parquet
+

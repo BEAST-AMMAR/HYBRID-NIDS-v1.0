@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Shield, ShieldAlert, Activity, LogOut, Play, Square, Clock, Server } from 'lucide-react';
+import { Shield, ShieldAlert, Activity, LogOut, Play, Square, Clock, Server, ChevronDown, ChevronUp } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import ReactMarkdown from 'react-markdown';
@@ -7,6 +7,7 @@ import ReactMarkdown from 'react-markdown';
 const Monitor = ({ token, setToken }) => {
     const [logs, setLogs] = useState([]);
     const [status, setStatus] = useState('Disconnected');
+    const [expandedLogs, setExpandedLogs] = useState({});
     
     // New state for accurate counting and modes
     const [totalPackets, setTotalPackets] = useState(0);
@@ -17,8 +18,25 @@ const Monitor = ({ token, setToken }) => {
     const [selectedFile, setSelectedFile] = useState(null);
     const [isCapturing, setIsCapturing] = useState(false);
     const [timeLeft, setTimeLeft] = useState(null);
+    const [policy, setPolicy] = useState('p99');
     
     const navigate = useNavigate();
+
+    const toggleExpand = (id) => {
+        setExpandedLogs(prev => ({ ...prev, [id]: !prev[id] }));
+    };
+
+    const handlePolicyChange = async (newPolicy) => {
+        setPolicy(newPolicy);
+        const host = window.location.hostname || '127.0.0.1';
+        try {
+            await axios.post(`http://${host}:8000/api/policy`, { policy: newPolicy }, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+        } catch (e) {
+            console.error("Failed to update detection policy:", e);
+        }
+    };
 
     // Timer logic
     useEffect(() => {
@@ -78,8 +96,12 @@ const Monitor = ({ token, setToken }) => {
                         setTotalAnomalies(prev => prev + 1);
                     }
                     
-                    // Keep UI logs growing
-                    setLogs((prev) => [data, ...prev]);
+                    // Keep UI logs growing with stable unique ID
+                    const logEntry = {
+                        ...data,
+                        id: data.id || `${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+                    };
+                    setLogs((prev) => [logEntry, ...prev.slice(0, 999)]);
                 } catch (e) {
                     console.error("Error parsing WebSocket packet:", e);
                 }
@@ -211,37 +233,114 @@ const Monitor = ({ token, setToken }) => {
                                 {isCapturing ? "Waiting for network traffic..." : "Click 'Start Capture' to begin monitoring."}
                             </div>
                         )}
-                        {logs.filter(log => showAnomaliesOnly ? log.is_anomaly : true).map((log, index) => (
-                            <div key={index} className={`p-4 rounded-lg border ${log.is_anomaly ? 'bg-red-900/20 border-red-500' : 'bg-gray-800 border-gray-700'}`}>
-                                <div className="flex justify-between items-start">
-                                    <div className="flex items-center space-x-3">
-                                        {log.is_anomaly ? <ShieldAlert className="text-red-500" /> : <Shield className="text-green-500" />}
-                                        <div>
-                                            <p className="font-mono text-sm">
-                                                <span className="text-blue-400">{log.packet.src}</span> 
-                                                <span className="text-gray-500 mx-2">→</span> 
-                                                <span className="text-purple-400">{log.packet.dst}</span>
-                                            </p>
-                                            <p className="text-xs text-gray-400 mt-1">
-                                                Proto: {log.packet.proto} | Size: {log.packet.size} bytes | Score: {log.score.toFixed(4)}
-                                            </p>
+                        {logs.filter(log => showAnomaliesOnly ? log.is_anomaly : true).map((log, index) => {
+                            const logId = log.id || `log_${index}_${log.packet?.src}_${log.packet?.dst}`;
+                            const isExpanded = !!expandedLogs[logId];
+
+                            return (
+                                <div 
+                                    key={logId} 
+                                    className={`p-3.5 rounded-lg border transition-all duration-200 ${
+                                        log.is_anomaly 
+                                            ? 'bg-red-950/20 border-red-500/50 hover:border-red-500/80' 
+                                            : 'bg-gray-800/80 border-gray-700/60 hover:border-gray-600'
+                                    }`}
+                                >
+                                    <div className="flex justify-between items-center">
+                                        <div className="flex items-center space-x-3 min-w-0">
+                                            <div className="flex-shrink-0">
+                                                {log.is_anomaly ? (
+                                                    <ShieldAlert className="text-red-500 w-5 h-5" />
+                                                ) : (
+                                                    <Shield className="text-green-500 w-5 h-5" />
+                                                )}
+                                            </div>
+                                            <div className="min-w-0">
+                                                <div className="flex items-center space-x-2 font-mono text-xs sm:text-sm truncate">
+                                                    <span className="text-blue-400 font-medium">
+                                                        {log.packet.src}{log.packet.sport ? `:${log.packet.sport}` : ''}
+                                                    </span> 
+                                                    <span className="text-gray-500">→</span> 
+                                                    <span className="text-purple-400 font-medium">
+                                                        {log.packet.dst}{log.packet.dport ? `:${log.packet.dport}` : ''}
+                                                    </span>
+                                                </div>
+                                                <div className="flex flex-wrap items-center gap-x-2 text-xs text-gray-400 mt-1">
+                                                    <span className="bg-gray-900/60 px-1.5 py-0.5 rounded font-mono text-gray-300">
+                                                        {log.packet.proto}
+                                                    </span>
+                                                    <span>•</span>
+                                                    <span>{log.packet.size} bytes</span>
+                                                    <span>•</span>
+                                                    <span className={log.is_anomaly ? "text-red-400 font-medium" : "text-gray-400"}>
+                                                        Score: {log.score.toFixed(4)}
+                                                    </span>
+                                                    {log.attack_type && log.attack_type !== 'Normal Traffic' && (
+                                                        <>
+                                                            <span>•</span>
+                                                            <span className="text-red-300 font-semibold truncate max-w-[220px]">
+                                                                {log.attack_type}
+                                                            </span>
+                                                        </>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div className="flex items-center space-x-2 flex-shrink-0 ml-3">
+                                            {log.is_anomaly ? (
+                                                <>
+                                                    <span className="bg-red-600 text-white text-[11px] font-bold px-2 py-0.5 rounded uppercase tracking-wider">
+                                                        Anomaly
+                                                    </span>
+                                                    {log.explanation && (
+                                                        <button
+                                                            onClick={() => toggleExpand(logId)}
+                                                            className={`flex items-center space-x-1.5 text-xs px-2.5 py-1 rounded transition font-medium border ${
+                                                                isExpanded 
+                                                                    ? 'bg-red-900/60 text-red-200 border-red-600' 
+                                                                    : 'bg-red-950/40 hover:bg-red-900/50 text-red-300 border-red-700/60'
+                                                            }`}
+                                                            title="Inspect Threat Details & XAI Attribution"
+                                                        >
+                                                            <span>{isExpanded ? "Hide Details" : "Inspect Threat Details"}</span>
+                                                            {isExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                                                        </button>
+                                                    )}
+                                                </>
+                                            ) : (
+                                                <span className="bg-green-950/60 text-green-400 border border-green-700/40 text-[11px] font-semibold px-2 py-0.5 rounded uppercase">
+                                                    Normal
+                                                </span>
+                                            )}
                                         </div>
                                     </div>
-                                    {log.is_anomaly && (
-                                        <span className="bg-red-600 text-xs font-bold px-2 py-1 rounded uppercase animate-pulse">
-                                            Anomaly
-                                        </span>
+
+                                    {/* Collapsible RAG & XAI Threat Intelligence Details */}
+                                    {log.is_anomaly && log.explanation && isExpanded && (
+                                        <div className="mt-3 pt-3 border-t border-red-500/30">
+                                            <div className="p-4 bg-gray-950/90 rounded-lg border border-red-500/40 text-sm text-gray-200 shadow-inner">
+                                                <div className="flex items-center justify-between pb-2 mb-3 border-b border-gray-800 text-xs">
+                                                    <span className="font-semibold text-gray-300 flex items-center space-x-1.5">
+                                                        <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse inline-block"></span>
+                                                        <span>RAG Threat Knowledge & XAI Feature Attribution</span>
+                                                    </span>
+                                                    <button
+                                                        onClick={() => toggleExpand(logId)}
+                                                        className="text-gray-400 hover:text-white transition underline"
+                                                    >
+                                                        Collapse ▴
+                                                    </button>
+                                                </div>
+                                                <div className="prose prose-invert prose-sm max-w-none text-gray-300">
+                                                    <ReactMarkdown>{log.explanation}</ReactMarkdown>
+                                                </div>
+                                            </div>
+                                        </div>
                                     )}
                                 </div>
-                                {log.explanation && (
-                                    <div className="mt-3 p-4 bg-black/40 rounded border-l-4 border-yellow-500 text-sm text-gray-300">
-                                        <div className="prose prose-invert prose-sm max-w-none">
-                                            <ReactMarkdown>{log.explanation}</ReactMarkdown>
-                                        </div>
-                                    </div>
-                                )}
-                            </div>
-                        ))}
+                            );
+                        })}
                     </div>
                 </div>
 
@@ -286,11 +385,25 @@ const Monitor = ({ token, setToken }) => {
                                     value={captureMode} 
                                     onChange={(e) => setCaptureMode(e.target.value)}
                                     disabled={isCapturing}
-                                    className="w-full bg-gray-700 text-white rounded p-2 border border-gray-600 focus:outline-none focus:border-blue-500"
+                                    className="w-full bg-gray-700 text-white rounded p-2 border border-gray-600 focus:outline-none focus:border-blue-500 mb-3"
                                 >
                                     <option value="continuous">Continuous (Default)</option>
                                     <option value="1m">1 Minute Session</option>
                                     <option value="5m">5 Minute Session</option>
+                                </select>
+                            </div>
+
+                            <div>
+                                <label className="block text-sm text-gray-400 mb-1">Detection Policy / Sensitivity</label>
+                                <select 
+                                    value={policy} 
+                                    onChange={(e) => handlePolicyChange(e.target.value)}
+                                    className="w-full bg-gray-700 text-white rounded p-2 border border-gray-600 focus:outline-none focus:border-blue-500"
+                                >
+                                    <option value="fpr_3pct">High Precision (FPR ~3% - Default)</option>
+                                    <option value="p99">Enterprise Strict (FPR &lt;1%)</option>
+                                    <option value="p95">Balanced Low-FPR (~5%)</option>
+                                    <option value="youden">Maximum Sensitivity</option>
                                 </select>
                             </div>
                             
@@ -345,9 +458,9 @@ const Monitor = ({ token, setToken }) => {
                     </div>
 
                     <div className="bg-blue-900/20 p-6 rounded-lg border border-blue-500/30">
-                        <h3 className="text-blue-400 font-bold mb-2">System Info</h3>
+                        <h3 className="text-blue-400 font-bold mb-2">NF-UQ-NIDS-v2 Engine</h3>
                         <p className="text-sm text-gray-300">
-                            The engine is utilizing a Hybrid Autoencoder + Isolation Forest architecture for statistical and reconstruction-based anomaly detection.
+                            Stateful 133-Feature NetFlow V2 Engine powered by PyTorch CUDA on NVIDIA RTX 5070, 200-Tree Latent Isolation Forest, Mahalanobis manifold distance, and Gated Fusion.
                         </p>
                     </div>
                 </div>

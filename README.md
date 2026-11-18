@@ -13,57 +13,36 @@ A real-time, explainable **Network Intrusion Detection System (NIDS)** combining
 
 ## 📌 Key Highlights
 
-- **Dual-Engine Hybrid Detection**: Fuses Deep Autoencoder reconstruction error ($\alpha = 0.75$) with an Isolation Forest statistical outlier detector ($1 - \alpha = 0.25$) to capture both signature-like volumetric spikes and subtle zero-day anomalies.
-- **Empirically Validated Performance**: Evaluated against the full benchmark test set (`KDDTest+.txt`, 22,544 packets), achieving **90.52% real test accuracy**, **96.72% AUC-ROC**, and **92.32% attack recall**.
-- **Explainable AI (SHAP & Feature Error)**: Deconstructs detected anomalies into the exact top contributing network indicators (e.g., `serror_rate`, `flag_S0`, `dst_host_srv_diff_host_rate`).
-- **Cybersecurity RAG Engine**: Semantic vector retrieval over an embedded security knowledge base (49 attack signatures and MITRE ATT&CK patterns) providing contextual threat summaries and mitigation guidance.
+- **Dual-Engine Hybrid Detection**: Fuses Deep Residual Autoencoder reconstruction error on the **NVIDIA RTX 5070 GPU** with a **Latent Isolation Forest (200 Trees)**, **Mahalanobis Covariance Distance**, and **Topological k-NN density** on the 16-D bottleneck manifold.
+- **Empirically Validated Performance on NF-UQ-NIDS-v2**: Evaluated on **1,702,252 held-out NetFlow v2 test records** across 4 unified benchmark datasets, achieving **88.33% real accuracy**, **97.13% precision**, **93.40% ROC-AUC**, and only **5.08% False Positive Rate**.
+- **Hardware-Accelerated GPU Streaming Pipeline**: PyTorch CUDA 12.8 nightly pipeline streaming across **75,987,976 NetFlow records** (~283 million benign flow exposures across 12 full epochs) while maintaining system RAM under **2.3 GB**.
+- **NetFlow V2 Flow Architecture**: Native 133-dimensional flow metrics (duration, byte throughput, packet distributions, TCP flags, TTL variance, and temporal host-context features).
+- **Cybersecurity RAG Engine**: Semantic vector retrieval over an embedded security knowledge base covering all 20 NF-UQ attack categories (DDoS, DoS, Botnets, Exploits, Ransomware, Infiltration, Scanning, Brute Force, etc.).
 - **Real-Time Asynchronous Pipeline**: Multi-threaded Scapy packet capture decoupled via thread-safe queues and streamed live to a modern React dashboard over WebSockets.
-- **Secure Access Control**: JWT-based authentication and Google OAuth 2.0 integration.
 
 ---
 
-## 📊 Benchmark Evaluation Results
+## 📊 Benchmark Evaluation Results (NF-UQ-NIDS-v2)
 
-Evaluated directly on the official **NSL-KDD Benchmark Test Dataset (`KDDTest+.txt`)** across all **22,544** records without threshold overfitting:
+Evaluated directly on **Partitions 50 & 51 (1,702,252 held-out flows)** across all 4 benchmark sources (*NF-CSE-CIC-IDS2018-v2, NF-ToN-IoT-v2, NF-UNSW-NB15-v2, NF-BoT-IoT-v2*):
 
 | Evaluation Metric | Measured Score | Raw Value | Operational Context |
 |---|---|---|---|
-| **Accuracy** | **90.52%** | `0.905208` | 20,407 correct classifications out of 22,544 test packets |
-| **AUC-ROC** | **96.72%** | `0.967239` | Global separability across normal and attack distributions |
-| **Precision** | **91.14%** | `0.911448` | Low alert fatigue: 91.14% of triggered alerts are genuine attacks |
-| **Recall (Detection Rate)**| **92.32%** | `0.923167` | Successfully catches 11,847 out of 12,833 diverse attacks |
-| **F1-Score** | **91.73%** | `0.917270` | Harmonic balance under severe class distribution skew |
-| **False Positive Rate (FPR)** | **11.85%** | `0.118525` | 1,151 false alarms out of 9,711 legitimate benign packets |
-| **False Negative Rate (FNR)** | **7.68%** | `0.076833` | Only 986 missed attacks out of 12,833 total attacks |
+| **Accuracy** | **88.33%** | `0.883331` | 1,503,652 correct classifications out of 1,702,252 test flows |
+| **Precision** | **97.13%** | `0.971314` | Ultra-low alert fatigue: 97.13% of triggered alerts are genuine threats |
+| **Recall (Detection Rate)**| **85.07%** | `0.850722` | Successfully catches 968,755 real-world network attacks |
+| **F1-Score** | **90.70%** | `0.907027` | Robust harmonic balance on imbalanced traffic streams |
+| **False Positive Rate (FPR)** | **5.08%** | `0.050771` | Only 28,610 false alarms out of 563,507 clean normal flows |
+| **ROC-AUC** | **93.40%** | `0.933954` | High global separability between benign traffic and intrusions |
+| **PR-AUC** | **97.16%** | `0.971597` | High Precision-Recall AUC under severe real-world attack ratios |
 
-### Confusion Matrix
+### Confusion Matrix (1,702,252 flows)
 
 ```text
                         Predicted Normal (0)      Predicted Anomaly (1)
-Actual Normal  (0)       TN = 8,560 (37.97%)       FP = 1,151 (5.11%)
-Actual Anomaly (1)       FN = 986   (4.37%)        TP = 11,847 (52.55%)
+Actual Normal  (0)       TN = 534,897 (31.42%)     FP = 28,610  (1.68%)
+Actual Anomaly (1)       FN = 169,990 (9.99%)      TP = 968,755 (56.91%)
 ```
-
-### Model Constituent Ablation Study
-
-| Model | Accuracy | Precision | Recall | F1-Score | AUC-ROC | False Positives | False Negatives |
-|---|---|---|---|---|---|---|---|
-| **Autoencoder Alone** | 82.37% | **98.16%** | 70.34% | 81.96% | **96.83%** | **169** | 3,806 |
-| **Isolation Forest Alone** | 77.75% | 75.10% | 91.12% | 82.34% | 84.09% | 3,876 | 1,140 |
-| **Hybrid Ensemble ($\alpha=0.75$)** | **90.52%** | 91.14% | **92.32%** | **91.73%** | 96.72% | 1,151 | **986** |
-
-### Training vs. Test Benchmark Generalization
-
-| Evaluation Parameter | Training Set (`KDDTrain+.txt`, 125,973) | Test Set (`KDDTest+.txt`, 22,544) | Generalization Delta |
-|---|---|---|---|
-| **Accuracy** | **92.48%** | **90.52%** | $-1.96\%$ (Healthy generalization) |
-| **AUC-ROC** | **98.40%** | **96.72%** | $-1.68\%$ (Strong distribution stability) |
-| **Recall (Sensitivity)** | **97.91%** | **92.32%** | $-5.59\%$ (Reflects 17 novel zero-day attack classes) |
-| **Precision** | **87.44%** | **91.14%** | $+3.70\%$ (Fewer false alarms on test set) |
-| **F1-Score** | **92.38%** | **91.73%** | $-0.65\%$ (Consistent harmonic balance) |
-| **False Positive Rate (FPR)** | **12.25%** | **11.85%** | $-0.40\%$ (Stable false alarm rate) |
-| **False Negative Rate (FNR)** | **2.09%** | **7.68%** | $+5.59\%$ (Low miss rate even with unseen attacks) |
-| **Calibrated Threshold ($\Theta$)** | **0.127941** | **0.127941** | Identical mathematical cutoff |
 
 ---
 
@@ -124,47 +103,41 @@ Physical Interface (NIC) / Synthetic Generator / PCAP Replay
 ├── eval_results.txt                       # Exact benchmark evaluation metrics
 ├── eval_results.json                      # Machine-readable evaluation metrics
 ├── create_admin.py                        # Admin account bootstrap utility
-├── knowledge_base.json                    # Baseline security knowledge base
-├── knowledge_base_enhanced.json           # Comprehensive 49-entry security taxonomy
+├── knowledge_base.json                    # 20 NF-UQ attack intelligence taxonomy
+├── configs/
+│   └── nf_uq.yaml                         # NF-UQ-NIDS-v2 dataset and training configs
 ├── data/
-│   ├── KDDTrain+.txt                      # NSL-KDD benchmark training set
-│   ├── KDDTest+.txt                       # NSL-KDD benchmark test set
-│   └── download_nsl_kdd.py                # Dataset download helper
+│   └── NF UQ NIDS V2/                     # NF-UQ-NIDS-v2 dataset (52 Parquet partitions)
 ├── documentation/
 │   ├── Project_Report.md                  # Comprehensive technical project report
-│   ├── COMPREHENSIVE_NIDS_TECHNICAL_REPORT_AND_DIAGNOSTIC.md  # Deep diagnostic analysis
-│   ├── HYBRID_NIDS_ANALYSIS_REPORT.md    # Complete architectural reference
-│   ├── architecture.png                   # System architecture diagram
-│   ├── flow.png                           # Execution flow diagram
-│   └── hybrid_nids_architecture_diagram.png # High-level diagram
-├── kb_index/                              # Pre-built RAG semantic vector index
-│   ├── embeddings.npy                     # Dense vector embeddings
-│   ├── metadata.json                      # Entry metadata and labels
-│   └── nn.joblib                          # Nearest-neighbors index
+│   ├── COMPREHENSIVE_NIDS_TECHNICAL_REPORT_AND_DIAGNOSTIC.md
+│   └── HYBRID_NIDS_ANALYSIS_REPORT.md
 ├── src/
 │   ├── backend/
 │   │   ├── main.py                        # FastAPI entrypoint & WebSocket handler
-│   │   ├── detector.py                    # HybridDetector (AE + IF + SHAP)
-│   │   ├── sniffer.py                     # Real-time packet capture & feature extraction
+│   │   ├── detector.py                    # HybridDetector (PyTorch GPU + IF + Gated Fusion)
+│   │   ├── sniffer.py                     # NetFlow V2 packet capture & feature extraction
+│   │   ├── nf_uq_gpu_pipeline.py          # RTX 5070 GPU streaming training pipeline
+│   │   ├── nf_uq_pipeline.py              # Feature adapter & calibration engine
 │   │   ├── rag_service.py                 # RAG explanation & semantic search
 │   │   ├── rag_knowledge.py               # Knowledge base loader & normalization
 │   │   ├── kb_index.py                    # Vector index manager
 │   │   ├── model_metrics.py               # Standalone benchmark evaluation runner
-│   │   ├── traffic_generator.py           # Synthetic normal & anomaly traffic generator
-│   │   ├── train_pipeline.py              # Canonical model training pipeline
+│   │   ├── traffic_generator.py           # Synthetic NetFlow traffic generator
 │   │   ├── auth.py                        # JWT & password security
 │   │   ├── database.py                    # SQLAlchemy database engine
 │   │   ├── models.py                      # Database models (User, Alert)
 │   │   ├── schemas.py                     # Pydantic request/response schemas
 │   │   ├── requirements.txt               # Backend Python dependencies
-│   │   └── saved_models/                  # Trained neural & statistical artifacts
-│   │       ├── autoencoder.keras          # Trained Keras autoencoder
-│   │       ├── iso_forest.joblib          # Trained 250-tree Isolation Forest
-│   │       ├── standard_scaler.joblib     # QuantileTransformer
-│   │       ├── ae_scaler.joblib           # Autoencoder score normalizer
-│   │       ├── if_scaler.joblib           # Isolation Forest score normalizer
-│   │       ├── feature_columns.json       # 122 aligned feature column names
-│   │       └── threshold.txt              # Calibrated cutoff threshold (0.127941)
+│   │   └── saved_models/                  # GPU-trained model weights & adapter artifacts
+│   │       ├── autoencoder_torch.pt       # PyTorch Deep Autoencoder (RTX 5070 GPU)
+│   │       ├── iso_forest.joblib          # Latent Isolation Forest (200 Trees)
+│   │       ├── knn_model.joblib           # Topological k-NN index
+│   │       ├── scoring_artefacts.joblib   # Mahalanobis covariance & reference statistics
+│   │       ├── nf_uq_adapter_meta.joblib  # Feature adapter metadata & top categorical maps
+│   │       ├── nf_uq_adapter_quantile.joblib # QuantileTransformer scaling model
+│   │       ├── feature_columns.json       # 133 NetFlow feature columns
+│   │       └── threshold.txt              # Calibrated decision threshold (0.408528)
 │   └── frontend/
 │       ├── package.json                   # React Vite dependencies
 │       ├── vite.config.js                 # Vite build configuration

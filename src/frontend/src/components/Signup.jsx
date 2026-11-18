@@ -12,8 +12,9 @@ const Signup = () => {
     const handleSubmit = async (e) => {
         e.preventDefault();
         setError('');
+        const host = window.location.hostname || '127.0.0.1';
         try {
-            await axios.post('http://localhost:8000/signup', {
+            await axios.post(`http://${host}:8000/signup`, {
                 email,
                 password,
                 full_name: fullName

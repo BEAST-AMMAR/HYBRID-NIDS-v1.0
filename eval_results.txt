@@ -1,32 +1,55 @@
 ===========================================================================
-      HYBRID NIDS EXACT BENCHMARK EVALUATION RESULTS (KDDTest+.txt)
+      HYBRID NIDS EXACT BENCHMARK EVALUATION RESULTS (NF-UQ-NIDS-v2)
 ===========================================================================
-Total Dataset Samples    : 22544
-Normal Samples (0)       : 9711
-Anomaly Samples (1)      : 12833
-Operating Threshold      : 0.127941
-Fusion Alpha             : 0.75 * AE + 0.25 * IF
+Dataset Scope            : NF-UQ-NIDS-v2 (75,987,976 total NetFlow v2 records)
+Benchmark Test Set       : Partitions 50 & 51 (1,702,252 held-out test flows)
+Hardware Accelerated     : NVIDIA GeForce RTX 5070 Laptop GPU (CUDA 12.8, Blackwell)
+Model Architecture       : Deep Autoencoder (133 -> 64 -> 32 -> 16 -> 32 -> 64 -> 133) + Latent Isolation Forest (200 Trees) + Mahalanobis Covariance + Topological k-NN
+Operating Policy         : p95_val_normal
+Operating Threshold      : 0.408528
 ---------------------------------------------------------------------------
-ACCURACY                 : 90.52% (0.905208)
-AUC-ROC                  : 96.72% (0.967239)
-PRECISION                : 91.14% (0.911448)
-RECALL                   : 92.32% (0.923167)
-F1-SCORE                 : 91.73% (0.917270)
-FALSE POSITIVE RATE (FPR): 11.85% (1151 false alarms / 9711 normal)
-FALSE NEGATIVE RATE (FNR): 7.68% (986 missed attacks / 12833 attacks)
+Total Test Flows         : 1,702,252
+Normal Flows (0)         : 563,507
+Attack Flows (1)         : 1,138,745
+---------------------------------------------------------------------------
+ACCURACY                 : 88.33% (0.883331)
+PRECISION                : 97.13% (0.971314)
+RECALL (Detection Rate)  : 85.07% (0.850722)
+F1-SCORE                 : 90.70% (0.907027)
+FALSE POSITIVE RATE (FPR): 5.08% (28,610 false alarms / 563,507 normal)
+ROC-AUC                  : 93.40% (0.933954)
+PR-AUC                   : 97.16% (0.971597)
 ---------------------------------------------------------------------------
 CONFUSION MATRIX:
                 Predicted Normal (0)   Predicted Anomaly (1)
-Actual Normal  (0)     TN = 8560         FP = 1151    
-Actual Anomaly (1)     FN = 986          TP = 11847   
+Actual Normal  (0)     TN = 534,897         FP = 28,610    
+Actual Anomaly (1)     FN = 169,990         TP = 968,755   
 ---------------------------------------------------------------------------
-True Negatives (TN)      : 8560
-False Positives (FP)     : 1151
-False Negatives (FN)     : 986
-True Positives (TP)      : 11847
+True Negatives (TN)      : 534,897
+False Positives (FP)     : 28,610
+False Negatives (FN)     : 169,990
+True Positives (TP)      : 968,755
 ===========================================================================
 
---- COMPARISON WITH INDIVIDUAL CONSTITUENTS ---
-Autoencoder Alone        : Accuracy = 82.37%, Precision = 98.16%, Recall = 70.34%, F1 = 81.96%, AUC = 96.83%
-Isolation Forest Alone   : Accuracy = 77.75%, Precision = 75.10%, Recall = 91.12%, F1 = 82.34%, AUC = 84.09%
-Hybrid Ensemble (Ours)   : Accuracy = 90.52%, Precision = 91.14%, Recall = 92.32%, F1 = 91.73%, AUC = 96.72%
+--- PER-ATTACK RECALL (DETECTION RATES ACROSS 20 CLASSES) ---
+  * Generic              : 100.00%
+  * Shellcode            : 100.00%
+  * Worms                : 100.00%
+  * Brute Force          : 99.71%
+  * Fuzzers              : 99.60%
+  * Backdoor             : 99.54%
+  * DDoS                 : 99.02%
+  * DoS                  : 96.58%
+  * Ransomware           : 94.94%
+  * Analysis             : 90.24%
+  * Injection            : 89.88%
+  * Password             : 89.42%
+  * Exploits             : 89.25%
+  * Theft                : 58.82%
+  * Reconnaissance       : 44.10%
+  * XSS                  : 42.34%
+  * MITM                 : 33.33%
+  * Scanning             : 9.87%
+  * Infiltration         : 9.02%
+  * Bot                  : 6.31%
+===========================================================================

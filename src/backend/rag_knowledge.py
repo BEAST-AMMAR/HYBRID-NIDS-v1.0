@@ -28,7 +28,7 @@ def normalize_entries(entries: List[Dict[str, Any]], source: str = None) -> List
 
 def entry_text(entry: Dict[str, Any]) -> str:
     parts = []
-    for k in ('name', 'attack_type', 'description'):
+    for k in ('name', 'attack_type', 'category', 'description', 'mitigation'):
         v = entry.get(k)
         if v:
             parts.append(str(v))
@@ -40,25 +40,57 @@ def entry_text(entry: Dict[str, Any]) -> str:
 
 
 class SimpleRAG:
-    """Simple RAG-style retriever using keyword overlap scoring.
-
-    This is intentionally lightweight and dependency-free so it works
-    without additional packages. It normalizes entries, builds an
-    in-memory index and scores entries by query token occurrences.
+    """Intelligent TF-IDF RAG-style retriever with inverse document frequency
+    and document length normalization for cyber threat knowledge bases.
     """
 
     def __init__(self, knowledge_path: str):
+        import math
+        import re
+        import collections
         self.path = os.path.abspath(knowledge_path)
         self.entries = normalize_entries(load_knowledge(self.path), source=os.path.basename(self.path))
-        self.index = [entry_text(e) for e in self.entries]
+        
+        self.docs = []
+        self.df = collections.Counter()
+        self.total_docs = len(self.entries)
+        
+        for e in self.entries:
+            text = entry_text(e)
+            tokens = [re.sub(r'[^a-z0-9_]', '', t) for t in text.split()]
+            tokens = [t for t in tokens if len(t) >= 2]
+            token_counts = collections.Counter(tokens)
+            self.docs.append((e, token_counts, len(tokens)))
+            for tok in set(tokens):
+                self.df[tok] += 1
 
     def query(self, q: str, top_k: int = 3) -> List[Tuple[Dict[str, Any], float]]:
-        q_tokens = [t for t in q.lower().split() if t]
+        import math
+        import re
+        import collections
+        
+        # Stopwords that appear ubiquitously and carry zero discriminative power in network security
+        stopwords = {"the", "and", "or", "to", "of", "in", "a", "is", "for", "on", "with", "at", "by", "from"}
+        raw_tokens = [re.sub(r'[^a-z0-9_]', '', t) for t in q.lower().split()]
+        q_tokens = [t for t in raw_tokens if len(t) >= 2 and t not in stopwords]
+        
+        if not q_tokens:
+            return []
+
         scores = []
-        for ent, text in zip(self.entries, self.index):
-            score = sum(text.count(tok) for tok in q_tokens)
+        for ent, tf, doc_len in self.docs:
+            score = 0.0
+            doc_len_norm = max(10, doc_len)
+            for tok in q_tokens:
+                if tok in tf:
+                    # IDF with smoothing: terms specific to 1 or 2 threats get high weight
+                    idf = math.log((self.total_docs + 1.0) / (self.df.get(tok, 0) + 1.0)) + 1.0
+                    tf_val = tf[tok]
+                    score += (tf_val / doc_len_norm) * idf
+                    
             if score > 0:
                 scores.append((ent, float(score)))
+
         scores.sort(key=lambda x: x[1], reverse=True)
         return scores[:top_k]
 

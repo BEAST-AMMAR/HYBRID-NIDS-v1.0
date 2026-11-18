@@ -1,9 +1,10 @@
 import time
 import random
 import threading
-import scapy.all as scapy
 import queue
 import logging
+from .sniffer import NetPacket
+
 
 class SyntheticTrafficGenerator:
     def __init__(self):
@@ -13,74 +14,102 @@ class SyntheticTrafficGenerator:
         self.packet_queue = None
 
     def _generate_normal_flow(self):
-        """Generates realistic normal flow packets with valid handshakes and protocols"""
+        """Generates realistic normal flow packets with valid handshakes and protocols."""
         src_ip = f"192.168.1.{random.randint(10, 150)}"
         dst_ip = f"192.168.1.{random.randint(151, 254)}"
         sport = random.randint(10000, 60000)
-        proto_choice = random.choice(['http', 'https', 'dns', 'smtp'])
+        proto_choice = random.choice(['http', 'https', 'https', 'dns', 'dns', 'smtp'])
         
         pkts = []
         if proto_choice == 'dns':
-            # UDP DNS Query and Reply
-            query = scapy.IP(src=src_ip, dst="192.168.1.1") / scapy.UDP(sport=sport, dport=53) / scapy.Raw(load=b"\xaa\xbb\x01\x00\x00\x01\x00\x00\x00\x00\x00\x00\x06google\x03com\x00\x00\x01\x00\x01")
-            reply = scapy.IP(src="192.168.1.1", dst=src_ip) / scapy.UDP(sport=53, dport=sport) / scapy.Raw(load=b"\xaa\xbb\x81\x80\x00\x01\x00\x01\x00\x00\x00\x00\x06google\x03com\x00\x00\x01\x00\x01\xc0\x0c\x00\x01\x00\x01\x00\x00\x01\x2c\x00\x04\xac\xd9\x05\xbe")
+            # UDP DNS Query and Reply (proto=17)
+            query = NetPacket(src=src_ip, dst="192.168.1.1", sport=sport, dport=53, proto=17, length=78)
+            reply = NetPacket(src="192.168.1.1", dst=src_ip, sport=53, dport=sport, proto=17, length=142)
             pkts.extend([query, reply])
         else:
-            # TCP established flow (HTTP, HTTPS, SMTP)
+            # TCP established flow (proto=6) with full handshake and bidirectional payload
             dport = 80 if proto_choice == 'http' else (443 if proto_choice == 'https' else 25)
-            # Step 1: Client SYN
-            syn = scapy.IP(src=src_ip, dst=dst_ip) / scapy.TCP(sport=sport, dport=dport, flags='S', seq=1000)
-            # Step 2: Server SYN-ACK
-            syn_ack = scapy.IP(src=dst_ip, dst=src_ip) / scapy.TCP(sport=dport, dport=sport, flags='SA', seq=2000, ack=1001)
-            # Step 3: Client ACK with payload
-            payload = b"GET /index.html HTTP/1.1\r\nHost: example.com\r\n\r\n" if dport in (80, 443) else b"EHLO client.example.com\r\n"
-            ack_data = scapy.IP(src=src_ip, dst=dst_ip) / scapy.TCP(sport=sport, dport=dport, flags='PA', seq=1001, ack=2001) / scapy.Raw(load=payload)
-            pkts.extend([syn, syn_ack, ack_data])
+            # Step 1: Client SYN (flags=2)
+            syn = NetPacket(src=src_ip, dst=dst_ip, sport=sport, dport=dport, proto=6, flags=2, length=64)
+            # Step 2: Server SYN-ACK (flags=18, window=28400)
+            syn_ack = NetPacket(src=dst_ip, dst=src_ip, sport=dport, dport=sport, proto=6, flags=18, length=64, window=28400)
+            # Step 3: Client ACK (flags=16)
+            client_ack = NetPacket(src=src_ip, dst=dst_ip, sport=sport, dport=dport, proto=6, flags=16, length=54)
+            # Step 4: Client Request (flags=24)
+            req_len = random.randint(350, 800) if dport in (80, 443) else 120
+            client_req = NetPacket(src=src_ip, dst=dst_ip, sport=sport, dport=dport, proto=6, flags=24, length=req_len)
+            
+            pkts.extend([syn, syn_ack, client_ack, client_req])
+
+            # Step 5: Server Data Chunks (flags=24)
+            num_chunks = random.randint(3, 8) if dport in (80, 443) else 1
+            for _ in range(num_chunks):
+                data_len = random.randint(1024, 1460)
+                server_chunk = NetPacket(src=dst_ip, dst=src_ip, sport=dport, dport=sport, proto=6, flags=24, length=data_len, window=28400)
+                pkts.append(server_chunk)
+
+            # Step 6: Client Final ACK
+            pkts.append(NetPacket(src=src_ip, dst=dst_ip, sport=sport, dport=dport, proto=6, flags=16, length=54))
             
         return pkts
 
     def _generate_anomaly_packet(self):
-        """Generates anomalous packets that trigger ML features like 'land' or high 'count'"""
-        anomaly_type = random.choice(['syn_flood', 'land_attack', 'port_scan', 'large_payload'])
+        """Generates anomalous packets that trigger NetFlow V2 detection features."""
+        anomaly_type = random.choice(['syn_flood', 'port_scan', 'brute_force', 'large_payload', 'bot_beacon'])
         
         if anomaly_type == 'syn_flood':
-            # SYN flood: Generate a BURST of packets to trigger high `count` and `serror_rate`
+            # DDoS / SYN flood: burst of SYN packets from random IPs to target
             pkts = []
             dst_ip = "192.168.1.100"
-            for _ in range(35):
+            for _ in range(25):
                 src_ip = f"{random.randint(1, 254)}.{random.randint(1, 254)}.{random.randint(1, 254)}.{random.randint(1, 254)}"
-                pkts.append(scapy.IP(src=src_ip, dst=dst_ip) / scapy.TCP(sport=random.randint(1024, 65535), dport=80, flags='S'))
+                pkts.append(NetPacket(src=src_ip, dst=dst_ip, sport=random.randint(1024, 65535), dport=80, proto=6, flags=2, length=64))
             return pkts
             
-        elif anomaly_type == 'land_attack':
-            # LAND attack: source IP == destination IP, which sets `land=1` in sniffer
-            ip = "192.168.1.100"
-            return [scapy.IP(src=ip, dst=ip) / scapy.TCP(sport=80, dport=80, flags='S')]
+        elif anomaly_type == 'port_scan':
+            # Port scanning across multiple ports from single source IP
+            src_ip = f"192.168.1.{random.randint(200, 250)}"
+            dst_ip = "192.168.1.100"
+            ports = [21, 22, 23, 25, 53, 80, 110, 135, 139, 143, 443, 445, 1433, 3306, 3389, 8080]
+            return [NetPacket(src=src_ip, dst=dst_ip, sport=54321, dport=p, proto=6, flags=2, length=64) for p in ports]
             
-        elif anomaly_type == 'large_payload':
-            # Huge packet (DoS)
+        elif anomaly_type == 'brute_force':
+            # High frequency authentication flows on SSH / RDP
+            pkts = []
+            src_ip = f"192.168.1.{random.randint(200, 250)}"
+            dst_ip = "192.168.1.100"
+            sport = random.randint(10000, 60000)
+            dport = random.choice([22, 3389])
+            for seq in range(10):
+                syn = NetPacket(src=src_ip, dst=dst_ip, sport=sport + seq, dport=dport, proto=6, flags=2, length=64)
+                pkts.append(syn)
+            return pkts
+
+        elif anomaly_type == 'bot_beacon':
+            # Subtle keepalive beacon to external C2 server
+            src_ip = f"192.168.1.{random.randint(10, 150)}"
+            c2_ip = f"{random.randint(45, 190)}.{random.randint(1, 254)}.{random.randint(1, 254)}.{random.randint(1, 254)}"
+            c2_port = random.choice([6667, 8888, 6666])
+            pkt = NetPacket(src=src_ip, dst=c2_ip, sport=random.randint(20000, 60000), dport=c2_port, proto=6, flags=24, length=96)
+            return [pkt]
+
+        else:  # large_payload / volumetric DoS
             src_ip = "192.168.1.50"
             dst_ip = "192.168.1.100"
-            payload = b"X" * 60000 # Very large payload
-            return [scapy.IP(src=src_ip, dst=dst_ip) / scapy.UDP(sport=1234, dport=80) / scapy.Raw(load=payload)]
-            
-        else: # port_scan
-            src_ip = "192.168.1.50" 
-            dst_ip = "192.168.1.100"
-            return [scapy.IP(src=src_ip, dst=dst_ip) / scapy.TCP(sport=54321, dport=p, flags='S') for p in range(20, 36)]
+            pkts = [NetPacket(src=src_ip, dst=dst_ip, sport=1234, dport=80, proto=17, length=1420) for _ in range(15)]
+            return pkts
 
     def _injection_loop(self):
-        print(f"Started Synthetic Generator (Virtual={self.virtual})")
+        print(f"[*] Started Synthetic NetFlow Generator (Virtual={self.virtual})")
         while self.is_running:
-            # Dynamic mix: variable 10-25% chance of an anomaly burst, otherwise batch of normal flows
-            anomaly_threshold = random.uniform(0.10, 0.25)
-            is_anomaly = random.random() < anomaly_threshold
+            # Realistic network proportion: 4-7% chance of an attack burst, otherwise batches of sustained normal traffic
+            is_anomaly = (random.random() < 0.05)
             
             if is_anomaly:
                 pkts = self._generate_anomaly_packet()
             else:
                 pkts = []
-                for _ in range(random.randint(1, 2)):
+                for _ in range(random.randint(2, 4)):
                     pkts.extend(self._generate_normal_flow())
                 
             for pkt in pkts:
@@ -91,7 +120,13 @@ class SyntheticTrafficGenerator:
                         pass
                 elif not self.virtual:
                     try:
-                        scapy.send(pkt, verbose=False)
+                        import scapy.all as scapy
+                        sc_pkt = scapy.IP(src=pkt.src, dst=pkt.dst)
+                        if pkt.proto == 6:
+                            sc_pkt = sc_pkt / scapy.TCP(sport=pkt.sport, dport=pkt.dport, flags=pkt.flags)
+                        elif pkt.proto == 17:
+                            sc_pkt = sc_pkt / scapy.UDP(sport=pkt.sport, dport=pkt.dport)
+                        scapy.send(sc_pkt, verbose=False)
                     except Exception as e:
                         print(f"Failed to inject packet physically: {e}")
                     
@@ -112,5 +147,6 @@ class SyntheticTrafficGenerator:
         self.is_running = False
         if self.thread:
             self.thread.join(timeout=2.0)
+
 
 generator_instance = SyntheticTrafficGenerator()

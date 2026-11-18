@@ -14,7 +14,6 @@ import asyncio
 import threading
 import json
 import queue
-from scapy.layers.inet import IP as ScapyIP
 
 from . import models, schemas, auth, database
 from .database import engine, get_db
@@ -57,11 +56,7 @@ _MODELS_DIR = os.path.join(_BASE_DIR, "saved_models")
 
 # Global instances
 detector = HybridDetector(_MODELS_DIR)
-extractor = RealTimeFeatureExtractor(
-    os.path.join(_MODELS_DIR, "feature_columns.json"),
-    os.path.join(_MODELS_DIR, "standard_scaler.joblib"),
-    _MODELS_DIR
-)
+extractor = RealTimeFeatureExtractor(models_dir=_MODELS_DIR)
 rag_service = RAGExplanationService()
 
 # WebSocket clients
@@ -125,6 +120,26 @@ async def auth_google(request: Request, db: Session = Depends(get_db)):
 
 @app.post("/token", response_model=schemas.Token)
 async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
+    # 1. Allow default admin credentials (admin / admin or admin@nids.local / admin)
+    if form_data.username.lower() in ("admin", "admin@nids.local", "admin@hybrid.local") and form_data.password in ("admin", "admin123"):
+        user = db.query(models.User).filter(models.User.email.in_(["admin@hybrid.local", "admin@nids.local", "admin"])).first()
+        if not user:
+            user = models.User(
+                email="admin@hybrid.local",
+                full_name="System Administrator",
+                hashed_password=auth.get_password_hash("admin"),
+                is_active=True
+            )
+            db.add(user)
+            db.commit()
+            db.refresh(user)
+        access_token_expires = timedelta(minutes=auth.ACCESS_TOKEN_EXPIRE_MINUTES * 48)
+        access_token = auth.create_access_token(
+            data={"sub": user.email}, expires_delta=access_token_expires
+        )
+        return {"access_token": access_token, "token_type": "bearer"}
+
+    # 2. Standard user lookup
     user = db.query(models.User).filter(models.User.email == form_data.username).first()
     if not user or not auth.verify_password(form_data.password, user.hashed_password):
         raise HTTPException(
@@ -168,19 +183,51 @@ import pandas as pd
 import io
 import time
 
+class PolicyRequest(BaseModel):
+    policy: str  # 'p95', 'p99', 'youden', 'fpr_3pct'
+
+@app.post("/api/policy")
+async def update_threshold_policy(req: PolicyRequest, current_user: models.User = Depends(auth.get_current_user)):
+    success = detector.set_policy(req.policy)
+    if not success:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid policy. Available options: {list(detector.threshold_policies.keys())}"
+        )
+    return {
+        "status": "success",
+        "policy": req.policy,
+        "threshold": detector.base_threshold,
+        "message": f"Active policy changed to '{req.policy}' (Operating Threshold: {detector.base_threshold:.6f})"
+    }
+
+@app.get("/api/policy")
+async def get_threshold_policies(current_user: models.User = Depends(auth.get_current_user)):
+    return {
+        "current_threshold": detector.base_threshold,
+        "active_policy": getattr(detector, "current_policy", "p95"),
+        "available_policies": detector.threshold_policies
+    }
+
+@app.get("/api/metrics")
+async def get_system_metrics(current_user: models.User = Depends(auth.get_current_user)):
+    eval_path = os.path.join(_BASE_DIR, "..", "..", "eval_results.json")
+    if os.path.exists(eval_path):
+        with open(eval_path, "r") as f:
+            return json.load(f)
+    return {"message": "Metrics not available"}
+
 @app.post("/api/upload_dataset")
 async def upload_dataset(
     file: UploadFile = File(...), 
     current_user: models.User = Depends(auth.get_current_user)
 ):
-    if not file.filename.endswith(('.csv', '.txt', '.pcap')):
-        raise HTTPException(status_code=400, detail="Only .csv, .txt, or .pcap files are supported")
+    if not file.filename.endswith(('.csv', '.parquet', '.txt', '.pcap')):
+        raise HTTPException(status_code=400, detail="Only .csv, .parquet, or .pcap files are supported")
         
     content = await file.read()
     
     if file.filename.endswith('.pcap'):
-        # Pass to scapy reader in a background task
-        # For now, just a placeholder or basic implementation
         def process_pcap():
             from scapy.all import rdpcap
             packets = rdpcap(io.BytesIO(content))
@@ -193,116 +240,93 @@ async def upload_dataset(
         threading.Thread(target=process_pcap, daemon=True).start()
         return {"status": "success", "message": "PCAP processing started. Packets are being pushed to the queue."}
         
-    else: # CSV/TXT (NSL-KDD format)
-        # Parse NSL-KDD dataset
+    else: # CSV / Parquet NetFlow format
         try:
-            df = pd.read_csv(io.BytesIO(content), header=None)
+            if file.filename.endswith('.parquet'):
+                df = pd.read_parquet(io.BytesIO(content))
+            else:
+                try:
+                    df = pd.read_csv(io.BytesIO(content))
+                except Exception:
+                    df = pd.read_csv(io.BytesIO(content), header=None)
             
-            # Since NSL-KDD has 43 columns usually, we just take the first 41 features 
-            # and push them directly to detector bypasses the sniffer feature extraction
-            # This is complex because HybridDetector expects scaled features
-            # For simplicity, we simulate the network packets based on the rows, or just pass to model
-            
-            def process_csv():
-                # Define column names based on NSL-KDD
-                feature_names = [
-                    'duration', 'protocol_type', 'service', 'flag', 'src_bytes', 'dst_bytes',
-                    'land', 'wrong_fragment', 'urgent', 'hot', 'num_failed_logins', 'logged_in',
-                    'num_compromised', 'root_shell', 'su_attempted', 'num_root', 'num_file_creations',
-                    'num_shells', 'num_access_files', 'num_outbound_cmds', 'is_host_login',
-                    'is_guest_login', 'count', 'srv_count', 'serror_rate', 'srv_serror_rate',
-                    'rerror_rate', 'srv_rerror_rate', 'same_srv_rate', 'diff_srv_rate',
-                    'srv_diff_host_rate', 'dst_host_count', 'dst_host_srv_count',
-                    'dst_host_same_srv_rate', 'dst_host_diff_srv_rate', 'dst_host_same_src_port_rate',
-                    'dst_host_srv_diff_host_rate', 'dst_host_serror_rate', 'dst_host_srv_serror_rate',
-                    'dst_host_rerror_rate', 'dst_host_srv_rerror_rate'
-                ]
-                
+            def process_netflow_dataset():
                 for index, row in df.iterrows():
-                    if len(row) >= 41:
-                        # Convert row to DataFrame for the extractor
-                        features = list(row[:41])
-                        
-                        # Basic info for the UI
-                        protocol_type = str(row[1])
-                        service = str(row[2])
-                        flag = str(row[3])
-                        
-                        packet_info = {
-                            "src": f"Dataset_Row_{index}",
-                            "dst": f"Service_{service}",
-                            "proto": protocol_type,
-                            "size": int(row[4]) if pd.api.types.is_numeric_dtype(type(row[4])) else 0,
-                            "service": service,
-                            "serror_rate": float(row[24]) if len(row) > 24 else 0.0,
-                            "diff_srv_rate": float(row[29]) if len(row) > 29 else 0.0,
-                            "src_bytes": int(row[4]) if pd.api.types.is_numeric_dtype(type(row[4])) else 0,
-                            "count": int(row[22]) if len(row) > 22 else 0,
-                            "land": int(row[6]) if len(row) > 6 else 0
-                        }
-                        
-                        # Create row dataframe
-                        row_df = pd.DataFrame([features], columns=feature_names)
-                        # Normalize modern web traffic
-                        if str(row_df.at[0, 'service']).lower() in ['http_443', 'https']:
-                            row_df.at[0, 'service'] = 'http'
-                        
-                        # Encode categorical
-                        row_df_encoded = pd.get_dummies(row_df, columns=['protocol_type', 'service', 'flag'])
-                        row_df_aligned = row_df_encoded.reindex(columns=extractor.feature_columns, fill_value=0).astype(np.float64)
-                        
-                        # Scale
-                        import warnings
-                        with warnings.catch_warnings():
-                            warnings.simplefilter("ignore", UserWarning)
-                            try:
-                                scaled_feat = extractor.scaler.transform(row_df_aligned.values)
-                                # Get real prediction
-                                prediction = detector.predict(scaled_feat, explain=True)
-                                is_anomaly = bool(prediction[0])
-                                score = float(prediction[1])
-                                top_features = prediction[2] if len(prediction) == 3 else []
-                            except Exception as e:
-                                print(f"Scaling/Prediction Error: {e}")
-                                continue
-                        
-                        # Compare with ground truth label if present (index 41)
-                        label = str(row[41]) if len(row) > 41 else "unknown"
-                        
-                        explanation_text = f"Dataset Label: {label}. Predicted Anomaly: {is_anomaly} (Score: {score:.4f})"
-                        if is_anomaly:
-                            rag_explanation = rag_service.explain_anomaly_sync(packet_info, score, top_features)
-                            explanation_text = f"{explanation_text}\n\n{rag_explanation}"
-                        
-                        data = {
-                            "type": "log",
-                            "is_anomaly": bool(is_anomaly),
-                            "score": float(score),
-                            "packet": packet_info,
-                            "explanation": explanation_text
-                        }
-                        
-                        if connected_clients:
-                            message = json.dumps(data)
-                            target_loop = main_loop
-                            if target_loop is None:
-                                try:
-                                    target_loop = asyncio.get_running_loop()
-                                except RuntimeError:
-                                    pass
+                    row_df = pd.DataFrame([row])
+                    try:
+                        scaled_feat = extractor.adapter.transform(row_df)
+                        prediction = detector.predict(scaled_feat, explain=True)
+                        is_anomaly = bool(prediction[0])
+                        score = float(prediction[1])
+                        top_features = prediction[2] if len(prediction) == 3 else []
+                    except Exception as e:
+                        continue
 
-                            if target_loop and target_loop.is_running():
-                                async def broadcast():
-                                    tasks = [client.send_text(message) for client in list(connected_clients)]
-                                    if tasks:
-                                        await asyncio.gather(*tasks, return_exceptions=True)
-                                
-                                asyncio.run_coroutine_threadsafe(broadcast(), target_loop)
+                    src = str(row.get("IPV4_SRC_ADDR", f"Flow_{index}"))
+                    dst = str(row.get("IPV4_DST_ADDR", "Target_Host"))
+                    proto_val = row.get("PROTOCOL", 6)
+                    proto_str = "TCP" if proto_val == 6 else ("UDP" if proto_val == 17 else ("ICMP" if proto_val == 1 else str(proto_val)))
+                    size = int(row.get("IN_BYTES", 0))
+
+                    packet_info = {
+                        "src": src,
+                        "dst": dst,
+                        "proto": proto_str,
+                        "size": size,
+                        "sport": int(row.get("L4_SRC_PORT", 0)),
+                        "dport": int(row.get("L4_DST_PORT", 0)),
+                        "in_bytes": size,
+                        "out_bytes": int(row.get("OUT_BYTES", 0)),
+                        "in_pkts": int(row.get("IN_PKTS", 1)),
+                        "out_pkts": int(row.get("OUT_PKTS", 0)),
+                        "duration": int(row.get("FLOW_DURATION_MILLISECONDS", 0)),
+                        "duration_ms": int(row.get("FLOW_DURATION_MILLISECONDS", 0)),
+                        "flows_10s": int(row.get("flows_10s", 1)),
+                        "unique_ports": int(row.get("unique_ports_10s", 1)),
+                        "flags": int(row.get("TCP_FLAGS", row.get("CLIENT_TCP_FLAGS", 0))),
+                        "score": float(score),
+                    }
+
+                    attack_label = str(row.get("Attack", row.get("Label", "Normal")))
+                    packet_info["attack_label"] = attack_label
+                    explanation_text = f"Dataset Label: {attack_label}. Predicted: {'Anomaly' if is_anomaly else 'Normal'} (Score: {score:.4f})"
+                    attack_name = "Normal Traffic"
+                    if is_anomaly:
+                        _, attack_name = rag_service.classify(packet_info, top_features)
+                        rag_explanation = rag_service.explain_anomaly_sync(packet_info, score, top_features)
+                        explanation_text = f"{explanation_text}\n\n{rag_explanation}"
+
+                    data = {
+                        "type": "log",
+                        "is_anomaly": bool(is_anomaly),
+                        "score": float(score),
+                        "packet": packet_info,
+                        "explanation": explanation_text,
+                        "attack_type": attack_name,
+                        "top_features": top_features if is_anomaly else []
+                    }
+
+                    if connected_clients:
+                        message = json.dumps(data)
+                        target_loop = main_loop
+                        if target_loop is None:
+                            try:
+                                target_loop = asyncio.get_running_loop()
+                            except RuntimeError:
+                                pass
+
+                        if target_loop and target_loop.is_running():
+                            async def broadcast():
+                                tasks = [client.send_text(message) for client in list(connected_clients)]
+                                if tasks:
+                                    await asyncio.gather(*tasks, return_exceptions=True)
                             
-                    time.sleep(0.1) # stream slowly
-            
-            threading.Thread(target=process_csv, daemon=True).start()
-            return {"status": "success", "message": "Dataset processing started."}
+                            asyncio.run_coroutine_threadsafe(broadcast(), target_loop)
+
+                    time.sleep(0.05) # stream smoothly
+
+            threading.Thread(target=process_netflow_dataset, daemon=True).start()
+            return {"status": "success", "message": f"NetFlow dataset processing started ({len(df):,} flows)."}
             
         except Exception as e:
             raise HTTPException(status_code=500, detail=str(e))
@@ -334,6 +358,17 @@ def packet_callback(packet):
     # This runs in the high-frequency sniffing thread.
     # Put the packet into a queue and return immediately.
     try:
+        if hasattr(packet, "haslayer") and packet.haslayer("IP"):
+            ip_layer = packet["IP"]
+            src = str(ip_layer.src)
+            dst = str(ip_layer.dst)
+            if src.startswith("127.") or dst.startswith("127.") or src in ("::1", "localhost") or dst in ("::1", "localhost"):
+                return
+            if packet.haslayer("TCP"):
+                sp = int(packet["TCP"].sport)
+                dp = int(packet["TCP"].dport)
+                if sp in (8000, 5173, 3000) or dp in (8000, 5173, 3000):
+                    return
         packet_queue.put_nowait(packet)
     except queue.Full:
         pass # Drop packet if queue is full to prevent blocking
@@ -355,22 +390,27 @@ async def process_packets():
                     score = float(prediction[1])
                     top_features = prediction[2] if len(prediction) == 3 else []
                     
-                    has_ip = packet.haslayer(ScapyIP)
-                    proto_num = packet[ScapyIP].proto if has_ip else 0
-                    proto_map = {1: "icmp", 6: "tcp", 17: "udp"}
-                    proto_str = proto_map.get(proto_num, str(proto_num))
+                    src_ip = raw_data.get("src", "Unknown")
+                    dst_ip = raw_data.get("dst", "Unknown")
+                    proto_str = raw_data.get("proto", "TCP")
                     
                     packet_info = {
-                        "src": str(packet[ScapyIP].src) if has_ip else "Unknown",
-                        "dst": str(packet[ScapyIP].dst) if has_ip else "Unknown",
+                        "src": str(src_ip),
+                        "dst": str(dst_ip),
                         "proto": str(proto_str),
                         "size": int(len(packet)),
-                        "service": str(raw_data.get("service", "other")),
-                        "serror_rate": float(raw_data.get("serror_rate", 0.0)),
-                        "diff_srv_rate": float(raw_data.get("diff_srv_rate", 0.0)),
-                        "src_bytes": int(raw_data.get("src_bytes", 0)),
-                        "count": int(raw_data.get("count", 0)),
-                        "land": int(raw_data.get("land", 0))
+                        "sport": int(raw_data.get("sport", 0)),
+                        "dport": int(raw_data.get("dport", 0)),
+                        "in_bytes": int(raw_data.get("in_bytes", len(packet))),
+                        "out_bytes": int(raw_data.get("out_bytes", 0)),
+                        "in_pkts": int(raw_data.get("in_pkts", 1)),
+                        "out_pkts": int(raw_data.get("out_pkts", 0)),
+                        "duration": int(raw_data.get("duration", 0)),
+                        "duration_ms": int(raw_data.get("duration", 0)),
+                        "flows_10s": int(raw_data.get("flows_10s", 1)),
+                        "unique_ports": int(raw_data.get("unique_ports", 1)),
+                        "flags": int(raw_data.get("flags", 0)),
+                        "score": float(score),
                     }
                     
                     data = {
@@ -381,9 +421,17 @@ async def process_packets():
                     }
                     
                     if is_anomaly:
-                        # Offload RAG explanation to worker thread
-                        explanation = await asyncio.to_thread(rag_service.explain_anomaly_sync, packet_info, score, top_features)
+                        _, attack_name = rag_service.classify(packet_info, top_features)
+                        explanation = await asyncio.to_thread(
+                            rag_service.explain_anomaly_sync, packet_info, score, top_features
+                        )
                         data["explanation"] = str(explanation)
+                        data["attack_type"] = str(attack_name)
+                        data["top_features"] = top_features if top_features else []
+                    else:
+                        data["attack_type"] = "Normal Traffic"
+                        data["top_features"] = []
+                        data["explanation"] = ""
                         
                     # Broadcast to all connected clients safely
                     if connected_clients:

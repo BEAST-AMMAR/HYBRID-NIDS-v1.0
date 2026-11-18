@@ -1,0 +1,111 @@
+# ============================================================================
+#  NF-UQ-NIDS-v2 Experiment Configuration
+#  Unified hybrid pipeline: PyTorch GPU AE, Latent IF, Mahalanobis & k-NN Fusion
+#  133 NetFlow V2 features with QuantileTransformer and one-hot encoding.
+# ============================================================================
+
+dataset: nf_uq
+experiment: hybrid_rank_mean
+
+# --- Paths ---
+data:
+  raw_csv: "data/NF UQ NIDS V2/NF-UQ-NIDS-v2.csv"
+  parquet_dir: "data/NF UQ NIDS V2/parquet"
+  chunk_size: 500000  # rows per chunk during CSV->Parquet conversion
+
+# --- Seeds (5 seeds for reproducibility, report mean +/- std) ---
+seeds: [11, 22, 33, 44, 55]
+
+# --- Subsampling caps (Option B: full capacity for 16GB RAM) ---
+sampling:
+  benign_train_cap: 1500000       # 1.5M benign training rows max
+  attack_class_cap: 150000        # 150k per attack class max
+  proportional_across_sources: true
+
+# --- Split ratios ---
+splits:
+  primary: "arrival_order"        # chronological by row arrival per source
+  secondary: "stratified_random"
+  train_ratio: 0.70
+  val_ratio: 0.10
+  test_ratio: 0.20
+
+# --- Feature adapter ---
+features:
+  drop_columns:
+    - IPV4_SRC_ADDR
+    - IPV4_DST_ADDR
+    - L4_SRC_PORT      # ephemeral source ports
+    - DNS_QUERY_ID      # random identifier
+  dst_port_top_k: 20
+  l7_proto_top_k: 30
+  tcp_flag_columns:
+    - TCP_FLAGS
+    - CLIENT_TCP_FLAGS
+    - SERVER_TCP_FLAGS
+  tcp_flag_bits: [FIN, SYN, RST, PSH, ACK, URG, ECE, CWR]
+  numeric_transform: "log1p_quantile"
+  quantile_n_quantiles: 1000
+  quantile_output: "normal"
+
+# --- Autoencoder (FROZEN architecture) ---
+ae:
+  hidden: [64, 32, 16]        # encoder layers; decoder mirrors
+  bottleneck: 16              # latent dimension (guide spec)
+  activation: "relu"
+  output_activation: "linear"
+  optimizer: "adam"
+  learning_rate: 0.0005
+  epochs: 40
+  batch_size: 512
+  early_stop_patience: 5
+  val_fraction: 0.1           # from training benign for AE val
+  dropout_rate: 0.15
+
+# --- Isolation Forest (FROZEN settings) ---
+iforest:
+  n_estimators: 200
+  max_samples: "auto"
+  train_on: "latent"          # 16-D latent vectors
+  train_data: "benign_only"
+  random_state_from_seed: true
+
+# --- Score components ---
+scores:
+  components:
+    - mse             # mean squared reconstruction error
+    - top8            # mean of 8 largest per-feature squared errors
+    - maha            # Mahalanobis distance in latent space
+    - knn             # mean distance to 5 nearest benign latent neighbours
+    - iforest         # latent IF anomaly score
+  knn_k: 5
+  knn_ref_size: 20000       # random sample of benign-fit latent points
+
+# --- Fusion ---
+fusion:
+  method: "rank_mean"          # default: label-free, scale-free
+  components: [mse, maha, knn]  # which scores to fuse
+
+# --- Threshold policies ---
+thresholds:
+  policies:
+    - p95_val_normal       # 95th percentile of validation normal scores
+    - p99_val_normal       # 99th percentile
+    - youden_val           # maximise TPR - FPR on validation
+    - fpr_5pct             # largest threshold with val FPR <= 5%
+    - fpr_3pct             # largest threshold with val FPR <= 3%
+  primary_policy: p95_val_normal
+
+# --- Metrics ---
+metrics:
+  positive_class: "attack"
+  mandatory:
+    - accuracy
+    - precision
+    - recall
+    - f1
+    - fpr
+    - roc_auc
+    - pr_auc           # mandatory for attack-majority dataset
+  per_source: true
+  per_attack_class: true

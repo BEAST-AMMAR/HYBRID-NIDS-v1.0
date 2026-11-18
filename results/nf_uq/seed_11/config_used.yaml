@@ -1,0 +1,102 @@
+ae:
+  activation: relu
+  batch_size: 512
+  bottleneck: 16
+  dropout_rate: 0.15
+  early_stop_patience: 5
+  epochs: 40
+  hidden:
+  - 64
+  - 32
+  - 16
+  learning_rate: 0.0005
+  optimizer: adam
+  output_activation: linear
+  val_fraction: 0.1
+data:
+  chunk_size: 500000
+  parquet_dir: data/NF UQ NIDS V2/parquet
+  raw_csv: data/NF UQ NIDS V2/NF-UQ-NIDS-v2.csv
+dataset: nf_uq
+experiment: hybrid_rank_mean
+features:
+  drop_columns:
+  - IPV4_SRC_ADDR
+  - IPV4_DST_ADDR
+  - L4_SRC_PORT
+  - DNS_QUERY_ID
+  dst_port_top_k: 20
+  l7_proto_top_k: 30
+  numeric_transform: log1p_quantile
+  quantile_n_quantiles: 1000
+  quantile_output: normal
+  tcp_flag_bits:
+  - FIN
+  - SYN
+  - RST
+  - PSH
+  - ACK
+  - URG
+  - ECE
+  - CWR
+  tcp_flag_columns:
+  - TCP_FLAGS
+  - CLIENT_TCP_FLAGS
+  - SERVER_TCP_FLAGS
+fusion:
+  components:
+  - mse
+  - maha
+  - knn
+  method: rank_mean
+iforest:
+  max_samples: auto
+  n_estimators: 200
+  random_state_from_seed: true
+  train_data: benign_only
+  train_on: latent
+metrics:
+  mandatory:
+  - accuracy
+  - precision
+  - recall
+  - f1
+  - fpr
+  - roc_auc
+  - pr_auc
+  per_attack_class: true
+  per_source: true
+  positive_class: attack
+sampling:
+  attack_class_cap: 150000
+  benign_train_cap: 1500000
+  proportional_across_sources: true
+scores:
+  components:
+  - mse
+  - top8
+  - maha
+  - knn
+  - iforest
+  knn_k: 5
+  knn_ref_size: 20000
+seeds:
+- 11
+- 22
+- 33
+- 44
+- 55
+splits:
+  primary: arrival_order
+  secondary: stratified_random
+  test_ratio: 0.2
+  train_ratio: 0.7
+  val_ratio: 0.1
+thresholds:
+  policies:
+  - p95_val_normal
+  - p99_val_normal
+  - youden_val
+  - fpr_5pct
+  - fpr_3pct
+  primary_policy: p95_val_normal
