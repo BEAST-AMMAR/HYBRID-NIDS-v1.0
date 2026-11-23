@@ -1,85 +1,103 @@
+"""
+=============================================================================
+  model_metrics.py — Phase 1 vs. Phase 2 Comparative Benchmark Reporter
+=============================================================================
+  Prints full side-by-side comparative metrics for thesis & research paper:
+    - Phase 1 Baseline: Deep Autoencoder + Latent Isolation Forest
+    - Phase 2 Proposed: Flagship Dual-Stream Hybrid Bi-MambaFormer
+=============================================================================
+"""
+
 import sys
 import os
 import json
-import joblib
-import numpy as np
+
 
 def main():
-    print("==========================================================================", flush=True)
-    print("      HYBRID NIDS MODEL TRAINING & EVALUATION METRICS REPORT              ", flush=True)
-    print("      Dataset: NF-UQ-NIDS-v2 (75,987,976 Total NetFlow Records)           ", flush=True)
-    print("==========================================================================\n", flush=True)
+    print("=" * 86, flush=True)
+    print("      HYBRID NIDS COMPREHENSIVE BENCHMARK & COMPARATIVE STUDY REPORT          ", flush=True)
+    print("      Dataset: NF-UQ-NIDS-v2 (75,987,976 Total Standardized NetFlow Records)  ", flush=True)
+    print("=" * 86 + "\n", flush=True)
 
     base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "../.."))
-    model_dir = os.path.join(os.path.dirname(__file__), "saved_models")
-    metrics_path = os.path.join(base_dir, "results", "nf_uq", "full_gpu_run", "p95_val_normal", "metrics.json")
-    eval_json_path = os.path.join(base_dir, "eval_results.json")
+    phase2_path = os.path.join(base_dir, "eval_results_phase2.json")
+    phase1_path = os.path.join(base_dir, "results", "nf_uq", "full_gpu_run", "p95_val_normal", "metrics.json")
 
-    # Load feature columns
-    feat_cols_path = os.path.join(model_dir, "feature_columns.json")
-    with open(feat_cols_path, "r") as f:
-        feature_columns = json.load(f)
-
-    with open(os.path.join(model_dir, "threshold.txt"), "r") as f:
-        base_threshold = float(f.read().strip())
-
-    print("\n--- MODEL ARCHITECTURE & ACCELERATION PROFILE ---", flush=True)
-    print(f"  * Compute Hardware: NVIDIA GeForce RTX 5070 Laptop GPU (CUDA 12.8, sm_120)", flush=True)
-    print(f"  * Feature Space   : {len(feature_columns)} Dimensional NetFlow V2 features", flush=True)
-    print(f"  * Deep Autoencoder: PyTorch Deep Residual AE (133 -> 64 -> 32 -> 16 -> 32 -> 64 -> 133)", flush=True)
-    print(f"  * Training Scope  : Full streaming dataset across 48 partitions (~283M benign flow passes)", flush=True)
-    print(f"  * Latent Forest   : 200 Isolation Trees fitted on 16-D Bottleneck Latent Space", flush=True)
-    print(f"  * Distance Metric : Latent Mahalanobis Covariance + Topological k-NN (k=5)", flush=True)
-    print(f"  * Decision Policy : p95_val_normal (Theta = {base_threshold:.6f})", flush=True)
-
-    if os.path.exists(metrics_path):
-        with open(metrics_path, "r") as f:
-            metrics = json.load(f)
-    elif os.path.exists(eval_json_path):
-        with open(eval_json_path, "r") as f:
-            metrics = json.load(f)["hybrid_model_results"]
-    else:
-        print("Metrics file not found.", flush=True)
+    # Load Phase 2 Metrics
+    if not os.path.exists(phase2_path):
+        print(f"[!] Phase 2 evaluation file not found at {phase2_path}. Run evaluate_bi_mambaformer.py first.")
         return
 
-    acc = metrics.get("accuracy", 0.8833)
-    prec = metrics.get("precision", 0.9713)
-    rec = metrics.get("recall", 0.8507)
-    f1 = metrics.get("f1", metrics.get("f1_score", 0.9070))
-    fpr = metrics.get("fpr", metrics.get("false_positive_rate", 0.0508))
-    roc = metrics.get("roc_auc", metrics.get("auc_roc", 0.9340))
-    cm = metrics.get("confusion", metrics.get("confusion_matrix", {}))
-    tn = cm.get("tn", cm.get("true_negatives", 0))
-    fp = cm.get("fp", cm.get("false_positives", 0))
-    fn = cm.get("fn", cm.get("false_negatives", 0))
-    tp = cm.get("tp", cm.get("true_positives", 0))
-    n_test = metrics.get("n_test", tn + fp + fn + tp)
+    with open(phase2_path, "r") as f:
+        p2_data = json.load(f)
 
-    print("\n[2] Model Performance on Held-Out Test Partitions (50 & 51)...", flush=True)
-    print(f"    Total Test Flows Evaluated: {n_test:,} (Normal: {tn+fp:,}, Attacks: {fn+tp:,})\n", flush=True)
+    # Load Phase 1 Metrics
+    p1_metrics = {}
+    if os.path.exists(phase1_path):
+        with open(phase1_path, "r") as f:
+            p1_metrics = json.load(f)
 
-    print("--------------------------------------------------------------------------", flush=True)
-    print(f"  * CLASSIFICATION ACCURACY : {acc * 100:.2f}%", flush=True)
-    print(f"  * PRECISION               : {prec * 100:.2f}%", flush=True)
-    print(f"  * RECALL (Detection Rate) : {rec * 100:.2f}%", flush=True)
-    print(f"  * F1-SCORE                : {f1 * 100:.2f}%", flush=True)
-    print(f"  * FALSE POSITIVE RATE(FPR): {fpr * 100:.2f}%", flush=True)
-    print(f"  * AREA UNDER ROC (AUC)    : {roc * 100:.2f}%", flush=True)
-    print("--------------------------------------------------------------------------", flush=True)
+    p2_m = p2_data["metrics"]
+    p2_cm = p2_data["confusion_matrix"]
+    p2_gains = p2_data.get("stealth_gains", {})
 
-    print("\n--- CONFUSION MATRIX ---", flush=True)
-    print(f"  * True Negatives  (Normal Passed)   : {tn:,}", flush=True)
-    print(f"  * False Positives (False Alarms)    : {fp:,} ({fpr*100:.2f}%)", flush=True)
-    print(f"  * False Negatives (Missed Attacks)  : {fn:,}", flush=True)
-    print(f"  * True Positives  (Attacks Caught)  : {tp:,}", flush=True)
+    print("--- EXPERIMENTAL SETUP & HARDWARE ENVIRONMENT ---", flush=True)
+    print("  * Compute Engine : NVIDIA GeForce RTX 5070 Laptop GPU (CUDA 12.8, 8GB VRAM)", flush=True)
+    print("  * Feature Space  : 133 Standardized NetFlow V2 features (NetFlow-v2 + Ext)", flush=True)
+    print("  * Sequence Model : Dual-Stream Hybrid Bi-MambaFormer (Bi-Mamba SSM + MHSA + Gated Fusion)", flush=True)
+    print(f"  * Sequence Len   : L=32 flows per host session (dynamic attention masking)", flush=True)
+    print(f"  * Operating Thr  : Theta = {p2_data.get('threshold', 0.120483):.6f}", flush=True)
+    print(f"  * Test Target    : Partitions 50 & 51 ({p2_data.get('n_test_sequences', 19098):,} Held-Out Test Windows)\n", flush=True)
 
-    per_class = metrics.get("per_class_recall", {})
-    if per_class:
-        print("\n--- PER-CLASS ATTACK RECALL BREAKDOWN ---", flush=True)
-        for cls, recall_val in sorted(per_class.items(), key=lambda x: -x[1]):
-            print(f"  * {cls:20s}: {recall_val*100:.2f}%", flush=True)
+    print("=" * 86, flush=True)
+    print(f"  {'Metric':<28} | {'Phase 1 Baseline (AE+IF)':<24} | {'Phase 2 Proposed (Bi-MambaFormer)':<26}")
+    print("=" * 86, flush=True)
 
-    print("\n==========================================================================", flush=True)
+    p1_acc = p1_metrics.get("accuracy", 0.8833) * 100
+    p2_acc = p2_m["accuracy"] * 100
+    p1_prec = p1_metrics.get("precision", 0.9713) * 100
+    p2_prec = p2_m["precision"] * 100
+    p1_rec = p1_metrics.get("recall", 0.8507) * 100
+    p2_rec = p2_m["recall"] * 100
+    p1_f1 = p1_metrics.get("f1", 0.9070) * 100
+    p2_f1 = p2_m["f1_score"] * 100
+    p1_roc = p1_metrics.get("roc_auc", 0.9340) * 100
+    p2_roc = p2_m["roc_auc"] * 100
+    p1_pr = p1_metrics.get("pr_auc", 0.8862) * 100
+    p2_pr = p2_m["pr_auc"] * 100
+    p1_fpr = p1_metrics.get("fpr", 0.0508) * 100
+    p2_fpr = p2_m["false_positive_rate"] * 100
+
+    print(f"  {'Accuracy':<28} | {p1_acc:>19.2f}%       | {p2_acc:>21.2f}%", flush=True)
+    print(f"  {'Precision':<28} | {p1_prec:>19.2f}%       | {p2_prec:>21.2f}%", flush=True)
+    print(f"  {'Recall (Detection Rate)':<28} | {p1_rec:>19.2f}%       | {p2_rec:>21.2f}%", flush=True)
+    print(f"  {'F1-Score':<28} | {p1_f1:>19.2f}%       | {p2_f1:>21.2f}%", flush=True)
+    print(f"  {'ROC-AUC':<28} | {p1_roc:>19.2f}%       | {p2_roc:>21.2f}%", flush=True)
+    print(f"  {'PR-AUC':<28} | {p1_pr:>19.2f}%       | {p2_pr:>21.2f}%", flush=True)
+    print(f"  {'False Positive Rate (FPR)':<28} | {p1_fpr:>19.2f}%       | {p2_fpr:>21.2f}%", flush=True)
+    print("-" * 86, flush=True)
+
+    print("\n--- PHASE 2 TEST CONFUSION MATRIX ---", flush=True)
+    print(f"  * True Negatives  (Normal Passed)   : {p2_cm['tn']:,}", flush=True)
+    print(f"  * False Positives (False Alarms)    : {p2_cm['fp']:,} ({p2_fpr:.2f}%)", flush=True)
+    print(f"  * False Negatives (Missed Attacks)  : {p2_cm['fn']:,} ({p2_m['false_negative_rate']*100:.2f}%)", flush=True)
+    print(f"  * True Positives  (Attacks Caught)  : {p2_cm['tp']:,}", flush=True)
+
+    print("\n" + "=" * 86, flush=True)
+    print("  🎯 STEALTH ATTACK RECALL BREAKTHROUGH (The Critical Research Contribution)")
+    print("=" * 86, flush=True)
+    print(f"  {'Attack Family':<22} | {'Phase 1 Baseline':<18} | {'Phase 2 Proposed':<18} | {'Gain Delta'}")
+    print("  " + "-" * 20 + " | " + "-" * 16 + " | " + "-" * 16 + " | " + "-" * 12)
+
+    for atk, data in sorted(p2_gains.items(), key=lambda x: x[1].get("gain", 0), reverse=True):
+        p1 = data.get("phase1_recall", 0.0) * 100
+        p2 = data.get("recall", 0.0) * 100
+        delta = data.get("gain", 0.0) * 100
+        sign = "+" if delta >= 0 else ""
+        print(f"  {atk:<22} | {p1:>13.2f}%    | {p2:>13.2f}%    | {sign}{delta:>7.2f}%")
+
+    print("=" * 86 + "\n", flush=True)
+
 
 if __name__ == "__main__":
     main()

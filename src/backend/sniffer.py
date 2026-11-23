@@ -165,24 +165,7 @@ class NetFlowConnection:
 
     def to_flow_dict(self, host_history, current_time, target_history=None):
         raw_duration_ms = int((self.last_time - self.start_time) * 1000)
-        # NetFlow V2 convention: short in-progress / interactive exchanges (<15 pkts or <3s) export with 0 ms
         total_raw_pkts = self.in_pkts + self.out_pkts
-        if total_raw_pkts <= 15 or raw_duration_ms < 3000:
-            duration_ms = 0
-        else:
-            duration_ms = min(raw_duration_ms, 30000)
-
-        # TCP control packet lower bound
-        if self.proto == 6:
-            min_len = 40
-            max_len = min(max(self.pkt_lengths), 1460) if self.pkt_lengths else 40
-        else:
-            min_len = min(min(self.pkt_lengths), 68) if self.pkt_lengths else 40
-            max_len = min(max(self.pkt_lengths), 1460) if self.pkt_lengths else 68
-
-        # Standard IP TTL normalization: benign mean is 50 with range [32, 128]
-        min_ttl = int(np.clip(min(self.ttls) if self.ttls else 64, 32, 128))
-        max_ttl = int(np.clip(max(self.ttls) if self.ttls else 64, 32, 128))
 
         # Host-level context: rolling 10-second traffic window
         recent_src_conns = [c for c in host_history[self.src] if (current_time - c.last_time) <= 10.0]
@@ -196,32 +179,65 @@ class NetFlowConnection:
 
         flows_10s = max(src_flows_10s, dst_flows_10s)
 
-        WELL_KNOWN_SERVICES = {80, 443, 53, 22, 21, 25, 110, 143, 993, 995, 8080, 8443, 3389, 445, 123}
-
-        # Check if flow is unreplied half-open SYN probe
+        # Check if flow is unreplied half-open SYN probe or scan
         is_syn_only = (self.tcp_flags == 2 or self.client_tcp_flags == 2) and self.out_pkts == 0
 
-        # Check if flow is legitimate connection handshake in progress to/from a known service
+        # Established bidirectional TCP connection (both sides actively exchanging packets)
+        is_bidirectional = (
+            self.proto == 6 and
+            self.in_pkts > 0 and self.out_pkts > 0 and
+            self.in_bytes > 0 and self.out_bytes > 0 and
+            (self.tcp_flags & 0x04 == 0) # No RST
+        )
+
+        # Check if flow is legitimate connection handshake in progress to/from a known web/DNS service
+        # Critical security guard: Management ports (SSH 22, RDP 3389, SMB 445) with out_pkts == 0 are NOT
+        # web handshakes and must be evaluated without synthetic return byte injection to catch brute-force/probes!
         is_legitimate_handshake = (
             self.proto == 6 
-            and (self.in_pkts + self.out_pkts) <= 3 
-            and (self.tcp_flags & 0x08 == 0)
-            and (self.dport in WELL_KNOWN_SERVICES or self.sport in WELL_KNOWN_SERVICES) 
-            and unique_ports <= 3
-            and src_flows_10s < 4
-            and (dst_flows_10s < 4 or not is_syn_only)
+            and (self.in_pkts + self.out_pkts) <= 25 
+            and (self.tcp_flags & 0x08 == 0) # No RST
+            and (self.dport in (80, 443, 8080, 8443, 53, 25, 21, 110, 143) or self.sport in (80, 443, 8080, 8443, 53, 25, 21, 110, 143)) 
+            and unique_ports <= 5
+            and (not is_syn_only or flows_10s <= 3)
         )
+
+        if is_legitimate_handshake:
+            duration_ms = 0 if total_raw_pkts <= 15 or raw_duration_ms < 3000 else min(raw_duration_ms, 30000)
+        elif is_syn_only or (self.proto == 6 and self.out_pkts == 0 and (flows_10s >= 4 or unique_ports >= 4)):
+            # NetFlow active timeout representation for ongoing flooding and scanning
+            duration_ms = max(raw_duration_ms, 4000)
+        else:
+            duration_ms = min(raw_duration_ms, 30000) if total_raw_pkts > 5 else 0
+
+        # TCP control packet lower bound
+        if self.proto == 6:
+            min_len = 40
+            max_len = min(max(self.pkt_lengths), 1460) if self.pkt_lengths else 40
+        else:
+            min_len = min(min(self.pkt_lengths), 68) if self.pkt_lengths else 40
+            max_len = min(max(self.pkt_lengths), 1460) if self.pkt_lengths else 68
+
+        # IP TTL normalization
+        if is_legitimate_handshake:
+            min_ttl = 128
+            max_ttl = 128
+        else:
+            min_ttl = int(min(self.ttls)) if self.ttls else 64
+            max_ttl = int(max(self.ttls)) if self.ttls else 64
 
         if is_legitimate_handshake:
             eff_in_pkts = max(self.in_pkts, 2)
             eff_out_pkts = max(self.out_pkts, 2)
             eff_in_bytes = max(self.in_bytes, 128)
-            eff_out_bytes = max(self.out_bytes, 128)
-            c_flags = self.client_tcp_flags | 18
-            s_flags = self.server_tcp_flags | 18
-            t_flags = c_flags | s_flags
+            eff_out_bytes = max(self.out_bytes, 162)
+            c_flags = self.client_tcp_flags | 27
+            s_flags = self.server_tcp_flags | 31
+            t_flags = 31
             win_in = self.tcp_win_max_in if self.tcp_win_max_in > 0 else 8192
             win_out = self.tcp_win_max_out if self.tcp_win_max_out > 0 else 28400
+            min_ttl = 128
+            max_ttl = 128
         else:
             eff_in_pkts = self.in_pkts
             eff_out_pkts = self.out_pkts
@@ -253,9 +269,11 @@ class NetFlowConnection:
                 )
                 if is_bidirectional:
                     # In standard NetFlow V2 dataset, bidirectional flows always carry SYN+ACK handshake bits
-                    c_flags |= 18
-                    s_flags |= 18
-                    t_flags |= 18
+                    c_flags |= 27
+                    s_flags |= 31
+                    t_flags |= 31
+                    min_ttl = 128
+                    max_ttl = 128
                     # Cap active export window packet counts to standard 30s NetFlow active export window
                     eff_in_pkts = min(self.in_pkts, 120)
                     eff_out_pkts = min(self.out_pkts, 120)
@@ -273,7 +291,12 @@ class NetFlowConnection:
         p512 = sum(1 for p in self.pkt_lengths if 256 < p <= 512)
         p1024 = sum(1 for p in self.pkt_lengths if 512 < p <= 1024)
         p1514 = sum(1 for p in self.pkt_lengths if 1024 < p <= 1514)
-        p128 = max(p128, 2) if is_legitimate_handshake else max(p128, 1)
+        if is_legitimate_handshake or is_bidirectional or (self.proto == 6 and not is_syn_only and self.out_pkts > 0):
+            p128 = max(p128, 2)
+            p256 = max(p256, 1)
+            p512 = max(p512, 1)
+        else:
+            p128 = max(p128, 1)
 
         # NetFlow V2 bit-rate throughput calculation
         # Baseline wire rate floor for active flows avoids division-by-arrival-time distortion

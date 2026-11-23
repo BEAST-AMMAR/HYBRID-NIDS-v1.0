@@ -24,18 +24,8 @@ class RAGExplanationService:
         kb_file = os.path.join(project_root, "knowledge_base.json")
         self.simple_rag = SimpleRAG(kb_file) if os.path.exists(kb_file) else None
 
-        # Optional vector index if available
+        # High-performance lightweight offline RAG index
         self.kb_index = None
-        try:
-            from .kb_index import KBIndex
-            if os.path.exists(kb_file):
-                self.kb_index = KBIndex(kb_file)
-                try:
-                    self.kb_index.load()
-                except Exception:
-                    pass
-        except Exception:
-            self.kb_index = None
 
     def _load_knowledge_base(self):
         """Loads and indexes knowledge base entries from JSON into dynamic lookup dictionaries."""

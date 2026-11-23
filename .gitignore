@@ -31,6 +31,11 @@ Desktop.ini
 # Node
 node_modules/
 npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Logs
+*.log
 
 # ML Model Artifacts (large files - retrain locally)
 # Uncomment below if you don't want to track models in git:

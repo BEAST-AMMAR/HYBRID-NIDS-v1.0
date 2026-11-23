@@ -1,0 +1,163 @@
+{
+  "dataset": "NF-UQ-NIDS-v2",
+  "model": "Dual-Stream Hybrid Bi-MambaFormer",
+  "architecture": {
+    "stream_1": "Bidirectional Mamba SSM (d_model=128, expand=2, state=16)",
+    "stream_2": "Multi-Head Temporal Self-Attention (4 heads, d_k=32)",
+    "fusion": "Adaptive Gated Fusion (Learned Gate G)",
+    "pooling": "Attention-Weighted Temporal Pooling",
+    "classifier": "MLP(128 -> 64 -> 1, Mish)"
+  },
+  "threshold": 0.120483,
+  "n_test_sequences": 19098,
+  "metrics": {
+    "accuracy": 0.9369043878940203,
+    "precision": 0.8363582706212188,
+    "recall": 0.9833448993754337,
+    "f1_score": 0.9039151582808389,
+    "roc_auc": 0.9890756850082548,
+    "pr_auc": 0.9776870340994476,
+    "false_positive_rate": 0.08317084145792711,
+    "false_negative_rate": 0.016655100624566273
+  },
+  "confusion_matrix": {
+    "tn": 12225,
+    "fp": 1109,
+    "fn": 96,
+    "tp": 5668
+  },
+  "latency": {
+    "sequences_per_second": 944.3556843260862,
+    "ms_per_1k_flows": 1058.9230483783479
+  },
+  "per_class_recall": {
+    "Analysis": 1.0,
+    "Backdoor": 1.0,
+    "Bot": 1.0,
+    "Brute Force": 0.9883720930232558,
+    "DDoS": 1.0,
+    "DoS": 1.0,
+    "Exploits": 1.0,
+    "Fuzzers": 1.0,
+    "Generic": 1.0,
+    "Infilteration": 0.7543352601156069,
+    "Reconnaissance": 1.0,
+    "Theft": 1.0,
+    "injection": 1.0,
+    "mitm": 1.0,
+    "password": 1.0,
+    "ransomware": 0.8,
+    "scanning": 0.988997555012225,
+    "xss": 1.0
+  },
+  "stealth_gains": {
+    "Analysis": {
+      "recall": 1.0,
+      "count": 1,
+      "phase1_recall": 0.902439,
+      "gain": 0.09756100000000001
+    },
+    "Backdoor": {
+      "recall": 1.0,
+      "count": 15,
+      "phase1_recall": 0.99536,
+      "gain": 0.0046399999999999775
+    },
+    "Bot": {
+      "recall": 1.0,
+      "count": 241,
+      "phase1_recall": 0.063083,
+      "gain": 0.936917
+    },
+    "Brute Force": {
+      "recall": 0.9883720930232558,
+      "count": 86,
+      "phase1_recall": 0.997064,
+      "gain": -0.008691906976744157
+    },
+    "DDoS": {
+      "recall": 1.0,
+      "count": 2175,
+      "phase1_recall": 0.990233,
+      "gain": 0.00976699999999997
+    },
+    "DoS": {
+      "recall": 1.0,
+      "count": 840,
+      "phase1_recall": 0.965831,
+      "gain": 0.034169000000000005
+    },
+    "Exploits": {
+      "recall": 1.0,
+      "count": 25,
+      "phase1_recall": 0.892517,
+      "gain": 0.107483
+    },
+    "Fuzzers": {
+      "recall": 1.0,
+      "count": 20,
+      "phase1_recall": 0.995968,
+      "gain": 0.0040320000000000356
+    },
+    "Generic": {
+      "recall": 1.0,
+      "count": 10,
+      "phase1_recall": 1.0,
+      "gain": 0.0
+    },
+    "Infilteration": {
+      "recall": 0.7543352601156069,
+      "count": 346,
+      "phase1_recall": 0.090161,
+      "gain": 0.6641742601156069
+    },
+    "Reconnaissance": {
+      "recall": 1.0,
+      "count": 114,
+      "phase1_recall": 0.441014,
+      "gain": 0.558986
+    },
+    "Theft": {
+      "recall": 1.0,
+      "count": 13,
+      "phase1_recall": 0.588235,
+      "gain": 0.41176500000000005
+    },
+    "injection": {
+      "recall": 1.0,
+      "count": 227,
+      "phase1_recall": 0.898767,
+      "gain": 0.10123300000000002
+    },
+    "mitm": {
+      "recall": 1.0,
+      "count": 3,
+      "phase1_recall": 0.0,
+      "gain": 1.0
+    },
+    "password": {
+      "recall": 1.0,
+      "count": 251,
+      "phase1_recall": 0.894152,
+      "gain": 0.10584800000000005
+    },
+    "ransomware": {
+      "recall": 0.8,
+      "count": 5,
+      "phase1_recall": 0.949367,
+      "gain": -0.14936699999999992
+    },
+    "scanning": {
+      "recall": 0.988997555012225,
+      "count": 818,
+      "phase1_recall": 0.098743,
+      "gain": 0.890254555012225
+    },
+    "xss": {
+      "recall": 1.0,
+      "count": 574,
+      "phase1_recall": 0.0,
+      "gain": 1.0
+    }
+  }
+}

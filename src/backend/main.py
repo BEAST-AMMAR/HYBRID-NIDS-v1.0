@@ -211,10 +211,11 @@ async def get_threshold_policies(current_user: models.User = Depends(auth.get_cu
 
 @app.get("/api/metrics")
 async def get_system_metrics(current_user: models.User = Depends(auth.get_current_user)):
-    eval_path = os.path.join(_BASE_DIR, "..", "..", "eval_results.json")
-    if os.path.exists(eval_path):
-        with open(eval_path, "r") as f:
-            return json.load(f)
+    for fname in ["eval_results_phase2.json", "eval_results.json"]:
+        eval_path = os.path.join(_BASE_DIR, "..", "..", fname)
+        if os.path.exists(eval_path):
+            with open(eval_path, "r") as f:
+                return json.load(f)
     return {"message": "Metrics not available"}
 
 @app.post("/api/upload_dataset")
@@ -252,17 +253,16 @@ async def upload_dataset(
             
             def process_netflow_dataset():
                 for index, row in df.iterrows():
+                    src = str(row.get("IPV4_SRC_ADDR", f"Flow_{index}"))
                     row_df = pd.DataFrame([row])
                     try:
                         scaled_feat = extractor.adapter.transform(row_df)
-                        prediction = detector.predict(scaled_feat, explain=True)
+                        prediction = detector.predict(scaled_feat, host_ip=src, explain=True)
                         is_anomaly = bool(prediction[0])
                         score = float(prediction[1])
                         top_features = prediction[2] if len(prediction) == 3 else []
                     except Exception as e:
                         continue
-
-                    src = str(row.get("IPV4_SRC_ADDR", f"Flow_{index}"))
                     dst = str(row.get("IPV4_DST_ADDR", "Target_Host"))
                     proto_val = row.get("PROTOCOL", 6)
                     proto_str = "TCP" if proto_val == 6 else ("UDP" if proto_val == 17 else ("ICMP" if proto_val == 1 else str(proto_val)))
@@ -385,12 +385,11 @@ async def process_packets():
                 res = await asyncio.to_thread(extractor.packet_to_features, packet, return_raw=True)
                 if res is not None and res[0] is not None:
                     scaled_feat, raw_data = res
-                    prediction = await asyncio.to_thread(detector.predict, scaled_feat, explain=True)
+                    src_ip = raw_data.get("src", "Unknown")
+                    prediction = await asyncio.to_thread(detector.predict, scaled_feat, host_ip=src_ip, explain=True)
                     is_anomaly = bool(prediction[0])
                     score = float(prediction[1])
                     top_features = prediction[2] if len(prediction) == 3 else []
-                    
-                    src_ip = raw_data.get("src", "Unknown")
                     dst_ip = raw_data.get("dst", "Unknown")
                     proto_str = raw_data.get("proto", "TCP")
                     

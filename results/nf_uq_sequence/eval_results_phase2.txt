@@ -1,0 +1,22 @@
+=============================================================================
+  PHASE 2 DUAL-STREAM HYBRID BI-MAMBAFORMER TEST EVALUATION REPORT
+=============================================================================
+  Dataset: NF-UQ-NIDS-v2 (Partitions 50 & 51 Held-Out Test Flows)
+  Model: Dual-Stream Hybrid Bi-MambaFormer (Bi-Mamba SSM + MHSA + Gated Fusion)
+  Operating Threshold: 0.120483
+=============================================================================
+  Overall Accuracy:         93.69% (0.936904)
+  Precision:                83.64% (0.836358)
+  Recall (Detection Rate):  98.33% (0.983345)
+  F1-Score:                 90.39% (0.903915)
+  ROC-AUC:                  98.91% (0.989076)
+  PR-AUC:                   97.77% (0.977687)
+  False Positive Rate:      8.32% (0.083171)
+  Throughput:               944.4 sequences/sec (1058.92 ms/1k flows)
+
+  Confusion Matrix:
+    True Negatives  (TN): 12,225
+    False Positives (FP): 1,109
+    False Negatives (FN): 96
+    True Positives  (TP): 5,668
+=============================================================================
