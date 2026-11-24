@@ -1,0 +1,166 @@
+{
+  "n_partitions": 52,
+  "columns": [
+    "IPV4_SRC_ADDR",
+    "L4_SRC_PORT",
+    "IPV4_DST_ADDR",
+    "L4_DST_PORT",
+    "PROTOCOL",
+    "L7_PROTO",
+    "IN_BYTES",
+    "IN_PKTS",
+    "OUT_BYTES",
+    "OUT_PKTS",
+    "TCP_FLAGS",
+    "CLIENT_TCP_FLAGS",
+    "SERVER_TCP_FLAGS",
+    "FLOW_DURATION_MILLISECONDS",
+    "DURATION_IN",
+    "DURATION_OUT",
+    "MIN_TTL",
+    "MAX_TTL",
+    "LONGEST_FLOW_PKT",
+    "SHORTEST_FLOW_PKT",
+    "MIN_IP_PKT_LEN",
+    "MAX_IP_PKT_LEN",
+    "SRC_TO_DST_SECOND_BYTES",
+    "DST_TO_SRC_SECOND_BYTES",
+    "RETRANSMITTED_IN_BYTES",
+    "RETRANSMITTED_IN_PKTS",
+    "RETRANSMITTED_OUT_BYTES",
+    "RETRANSMITTED_OUT_PKTS",
+    "SRC_TO_DST_AVG_THROUGHPUT",
+    "DST_TO_SRC_AVG_THROUGHPUT",
+    "NUM_PKTS_UP_TO_128_BYTES",
+    "NUM_PKTS_128_TO_256_BYTES",
+    "NUM_PKTS_256_TO_512_BYTES",
+    "NUM_PKTS_512_TO_1024_BYTES",
+    "NUM_PKTS_1024_TO_1514_BYTES",
+    "TCP_WIN_MAX_IN",
+    "TCP_WIN_MAX_OUT",
+    "ICMP_TYPE",
+    "ICMP_IPV4_TYPE",
+    "DNS_QUERY_ID",
+    "DNS_QUERY_TYPE",
+    "DNS_TTL_ANSWER",
+    "FTP_COMMAND_RET_CODE",
+    "Label",
+    "Attack",
+    "Dataset"
+  ],
+  "timestamp_like_columns": [],
+  "hash_columns_count": 39,
+  "unique_src_ips": {
+    "train": 239105,
+    "val": 37102,
+    "test": 25522
+  },
+  "host_overlap": {
+    "val": {
+      "unique_hosts": 37102,
+      "hosts_also_in_train": 31580,
+      "fraction_hosts_seen_in_train": 0.8511670529890571
+    },
+    "test": {
+      "unique_hosts": 25522,
+      "hosts_also_in_train": 22382,
+      "fraction_hosts_seen_in_train": 0.8769688895854557,
+      "fraction_rows_from_train_hosts": 0.9981471603499364,
+      "fraction_attack_rows_from_train_hosts": 0.999998243680543,
+      "fraction_benign_rows_from_train_hosts": 0.9944064581274057,
+      "ips_with_both_labels": 71
+    }
+  },
+  "duplicates": {
+    "val": {
+      "fraction_rows_identical_to_a_train_row": 0.9488389544617093
+    },
+    "test": {
+      "fraction_rows_identical_to_a_train_row": 0.9490075499984726,
+      "dup_fraction_attack_rows": 0.9749917672525455,
+      "dup_fraction_benign_rows": 0.8964981801468305,
+      "internal_duplicate_fraction": 0.8210435352697485
+    },
+    "train_internal_duplicate_fraction": 0.9339592679697657
+  },
+  "host_purity_hosts_ge32_flows_per_partition": {
+    "train": {
+      "hosts_ge32": 43257,
+      "pure_benign": 39397,
+      "pure_attack": 858,
+      "mixed": 3002,
+      "multi_dataset": 49
+    },
+    "val": {
+      "hosts_ge32": 1807,
+      "pure_benign": 1643,
+      "pure_attack": 35,
+      "mixed": 129,
+      "multi_dataset": 2
+    },
+    "test": {
+      "hosts_ge32": 1439,
+      "pure_benign": 1305,
+      "pure_attack": 36,
+      "mixed": 98,
+      "multi_dataset": 2
+    }
+  },
+  "attack_fraction_by_source_dataset": {
+    "train": {
+      "NF-BoT-IoT-v2": {
+        "rows": 35440726,
+        "attack_fraction": 0.9964215180016346
+      },
+      "NF-ToN-IoT-v2": {
+        "rows": 15897435,
+        "attack_fraction": 0.6399233587053509
+      },
+      "NF-CSE-CIC-IDS2018-v2": {
+        "rows": 17732649,
+        "attack_fraction": 0.1195065666725823
+      },
+      "NF-UNSW-NB15-v2": {
+        "rows": 2243239,
+        "attack_fraction": 0.03980003913983307
+      }
+    },
+    "val": {
+      "NF-CSE-CIC-IDS2018-v2": {
+        "rows": 737522,
+        "attack_fraction": 0.1200357413067
+      },
+      "NF-BoT-IoT-v2": {
+        "rows": 1477065,
+        "attack_fraction": 0.9964591944159532
+      },
+      "NF-ToN-IoT-v2": {
+        "rows": 663691,
+        "attack_fraction": 0.6395581678823429
+      },
+      "NF-UNSW-NB15-v2": {
+        "rows": 93397,
+        "attack_fraction": 0.038673619066993584
+      }
+    },
+    "test": {
+      "NF-ToN-IoT-v2": {
+        "rows": 379370,
+        "attack_fraction": 0.6416374515644357
+      },
+      "NF-BoT-IoT-v2": {
+        "rows": 845706,
+        "attack_fraction": 0.9964727694967281
+      },
+      "NF-CSE-CIC-IDS2018-v2": {
+        "rows": 423537,
+        "attack_fraction": 0.11910175498244545
+      },
+      "NF-UNSW-NB15-v2": {
+        "rows": 53639,
+        "attack_fraction": 0.04026920710676933
+      }
+    }
+  },
+  "dataset_only_baseline_test_row_accuracy": 0.8874790571548749
+}

@@ -1,0 +1,936 @@
+{
+  "setup": {
+    "train_parts": 20,
+    "n_train_windows": 98543,
+    "n_val": 5666,
+    "n_test": 19098,
+    "seed": 11,
+    "test_fraction_hosts_seen_in_train": 1.0
+  },
+  "dataset_prior": {
+    "full_test": {
+      "n": 19098,
+      "n_attack": 5764,
+      "threshold": 0.8983307495403252,
+      "accuracy": 0.7641637867839565,
+      "precision": 0.9937304075235109,
+      "recall": 0.21998612074947954,
+      "f1": 0.36022727272727273,
+      "fpr": 0.000599970001499925,
+      "fnr": 0.7800138792505205,
+      "roc_auc": 0.8319937425231444,
+      "pr_auc": 0.7234677609568452,
+      "tpr_at_5pct_fpr": 0.6649895905621096,
+      "confusion": {
+        "tn": 13326,
+        "fp": 8,
+        "fn": 4496,
+        "tp": 1268
+      },
+      "roc_auc_ci95": [
+        0.8266082570357826,
+        0.8380358933748138
+      ],
+      "pr_auc_ci95": [
+        0.7152149998351909,
+        0.7334514942439843
+      ],
+      "per_class_recall": {
+        "analysis": {
+          "count": 1,
+          "recall": 0.0
+        },
+        "backdoor": {
+          "count": 15,
+          "recall": 0.0
+        },
+        "bot": {
+          "count": 241,
+          "recall": 0.0
+        },
+        "brute force": {
+          "count": 86,
+          "recall": 0.0
+        },
+        "ddos": {
+          "count": 2175,
+          "recall": 0.2924137931034483
+        },
+        "dos": {
+          "count": 840,
+          "recall": 0.6166666666666667
+        },
+        "exploits": {
+          "count": 25,
+          "recall": 0.0
+        },
+        "fuzzers": {
+          "count": 20,
+          "recall": 0.0
+        },
+        "generic": {
+          "count": 10,
+          "recall": 0.0
+        },
+        "infilteration": {
+          "count": 346,
+          "recall": 0.0
+        },
+        "reconnaissance": {
+          "count": 114,
+          "recall": 0.8859649122807017
+        },
+        "theft": {
+          "count": 13,
+          "recall": 1.0
+        },
+        "injection": {
+          "count": 227,
+          "recall": 0.0
+        },
+        "mitm": {
+          "count": 3,
+          "recall": 0.0
+        },
+        "password": {
+          "count": 251,
+          "recall": 0.0
+        },
+        "ransomware": {
+          "count": 5,
+          "recall": 0.0
+        },
+        "scanning": {
+          "count": 818,
+          "recall": 0.0
+        },
+        "xss": {
+          "count": 574,
+          "recall": 0.0
+        }
+      }
+    },
+    "seen_host_subset": {
+      "n": 19098,
+      "n_attack": 5764,
+      "threshold": 0.8983307495403252,
+      "accuracy": 0.7641637867839565,
+      "precision": 0.9937304075235109,
+      "recall": 0.21998612074947954,
+      "f1": 0.36022727272727273,
+      "fpr": 0.000599970001499925,
+      "fnr": 0.7800138792505205,
+      "roc_auc": 0.8319937425231444,
+      "pr_auc": 0.7234677609568452,
+      "tpr_at_5pct_fpr": 0.6649895905621096,
+      "confusion": {
+        "tn": 13326,
+        "fp": 8,
+        "fn": 4496,
+        "tp": 1268
+      },
+      "roc_auc_ci95": [
+        0.8266082570357826,
+        0.8380358933748138
+      ],
+      "pr_auc_ci95": [
+        0.7152149998351909,
+        0.7334514942439843
+      ],
+      "per_class_recall": {
+        "analysis": {
+          "count": 1,
+          "recall": 0.0
+        },
+        "backdoor": {
+          "count": 15,
+          "recall": 0.0
+        },
+        "bot": {
+          "count": 241,
+          "recall": 0.0
+        },
+        "brute force": {
+          "count": 86,
+          "recall": 0.0
+        },
+        "ddos": {
+          "count": 2175,
+          "recall": 0.2924137931034483
+        },
+        "dos": {
+          "count": 840,
+          "recall": 0.6166666666666667
+        },
+        "exploits": {
+          "count": 25,
+          "recall": 0.0
+        },
+        "fuzzers": {
+          "count": 20,
+          "recall": 0.0
+        },
+        "generic": {
+          "count": 10,
+          "recall": 0.0
+        },
+        "infilteration": {
+          "count": 346,
+          "recall": 0.0
+        },
+        "reconnaissance": {
+          "count": 114,
+          "recall": 0.8859649122807017
+        },
+        "theft": {
+          "count": 13,
+          "recall": 1.0
+        },
+        "injection": {
+          "count": 227,
+          "recall": 0.0
+        },
+        "mitm": {
+          "count": 3,
+          "recall": 0.0
+        },
+        "password": {
+          "count": 251,
+          "recall": 0.0
+        },
+        "ransomware": {
+          "count": 5,
+          "recall": 0.0
+        },
+        "scanning": {
+          "count": 818,
+          "recall": 0.0
+        },
+        "xss": {
+          "count": 574,
+          "recall": 0.0
+        }
+      }
+    }
+  },
+  "flow_lgbm_max": {
+    "full_test": {
+      "n": 19098,
+      "n_attack": 5764,
+      "threshold": 0.10681314766407013,
+      "accuracy": 0.9278458477327469,
+      "precision": 0.8135544752645124,
+      "recall": 0.9871616932685635,
+      "f1": 0.891989340021947,
+      "fpr": 0.09779511024448778,
+      "fnr": 0.012838306731436502,
+      "roc_auc": 0.9940773845242505,
+      "pr_auc": 0.9927773654570755,
+      "tpr_at_5pct_fpr": 0.9821304649548924,
+      "confusion": {
+        "tn": 12030,
+        "fp": 1304,
+        "fn": 74,
+        "tp": 5690
+      },
+      "roc_auc_ci95": [
+        0.9927702211147758,
+        0.9953381065346452
+      ],
+      "pr_auc_ci95": [
+        0.9914147651730573,
+        0.9941923491680705
+      ],
+      "per_class_recall": {
+        "analysis": {
+          "count": 1,
+          "recall": 1.0
+        },
+        "backdoor": {
+          "count": 15,
+          "recall": 1.0
+        },
+        "bot": {
+          "count": 241,
+          "recall": 1.0
+        },
+        "brute force": {
+          "count": 86,
+          "recall": 1.0
+        },
+        "ddos": {
+          "count": 2175,
+          "recall": 1.0
+        },
+        "dos": {
+          "count": 840,
+          "recall": 1.0
+        },
+        "exploits": {
+          "count": 25,
+          "recall": 1.0
+        },
+        "fuzzers": {
+          "count": 20,
+          "recall": 1.0
+        },
+        "generic": {
+          "count": 10,
+          "recall": 1.0
+        },
+        "infilteration": {
+          "count": 346,
+          "recall": 0.7861271676300579
+        },
+        "reconnaissance": {
+          "count": 114,
+          "recall": 1.0
+        },
+        "theft": {
+          "count": 13,
+          "recall": 1.0
+        },
+        "injection": {
+          "count": 227,
+          "recall": 1.0
+        },
+        "mitm": {
+          "count": 3,
+          "recall": 1.0
+        },
+        "password": {
+          "count": 251,
+          "recall": 1.0
+        },
+        "ransomware": {
+          "count": 5,
+          "recall": 1.0
+        },
+        "scanning": {
+          "count": 818,
+          "recall": 1.0
+        },
+        "xss": {
+          "count": 574,
+          "recall": 1.0
+        }
+      }
+    },
+    "seen_host_subset": {
+      "n": 19098,
+      "n_attack": 5764,
+      "threshold": 0.10681314766407013,
+      "accuracy": 0.9278458477327469,
+      "precision": 0.8135544752645124,
+      "recall": 0.9871616932685635,
+      "f1": 0.891989340021947,
+      "fpr": 0.09779511024448778,
+      "fnr": 0.012838306731436502,
+      "roc_auc": 0.9940773845242505,
+      "pr_auc": 0.9927773654570755,
+      "tpr_at_5pct_fpr": 0.9821304649548924,
+      "confusion": {
+        "tn": 12030,
+        "fp": 1304,
+        "fn": 74,
+        "tp": 5690
+      },
+      "roc_auc_ci95": [
+        0.9927702211147758,
+        0.9953381065346452
+      ],
+      "pr_auc_ci95": [
+        0.9914147651730573,
+        0.9941923491680705
+      ],
+      "per_class_recall": {
+        "analysis": {
+          "count": 1,
+          "recall": 1.0
+        },
+        "backdoor": {
+          "count": 15,
+          "recall": 1.0
+        },
+        "bot": {
+          "count": 241,
+          "recall": 1.0
+        },
+        "brute force": {
+          "count": 86,
+          "recall": 1.0
+        },
+        "ddos": {
+          "count": 2175,
+          "recall": 1.0
+        },
+        "dos": {
+          "count": 840,
+          "recall": 1.0
+        },
+        "exploits": {
+          "count": 25,
+          "recall": 1.0
+        },
+        "fuzzers": {
+          "count": 20,
+          "recall": 1.0
+        },
+        "generic": {
+          "count": 10,
+          "recall": 1.0
+        },
+        "infilteration": {
+          "count": 346,
+          "recall": 0.7861271676300579
+        },
+        "reconnaissance": {
+          "count": 114,
+          "recall": 1.0
+        },
+        "theft": {
+          "count": 13,
+          "recall": 1.0
+        },
+        "injection": {
+          "count": 227,
+          "recall": 1.0
+        },
+        "mitm": {
+          "count": 3,
+          "recall": 1.0
+        },
+        "password": {
+          "count": 251,
+          "recall": 1.0
+        },
+        "ransomware": {
+          "count": 5,
+          "recall": 1.0
+        },
+        "scanning": {
+          "count": 818,
+          "recall": 1.0
+        },
+        "xss": {
+          "count": 574,
+          "recall": 1.0
+        }
+      }
+    }
+  },
+  "window_lgbm_pool": {
+    "full_test": {
+      "n": 19098,
+      "n_attack": 5764,
+      "threshold": 0.10629609881741912,
+      "accuracy": 0.9215101057702377,
+      "precision": 0.7999718666479111,
+      "recall": 0.9866412213740458,
+      "f1": 0.8835547269478754,
+      "fpr": 0.10664466776661168,
+      "fnr": 0.013358778625954198,
+      "roc_auc": 0.9955606617656625,
+      "pr_auc": 0.9934558757006701,
+      "tpr_at_5pct_fpr": 0.9850798056904927,
+      "confusion": {
+        "tn": 11912,
+        "fp": 1422,
+        "fn": 77,
+        "tp": 5687
+      },
+      "roc_auc_ci95": [
+        0.9945224609173821,
+        0.9965772835979467
+      ],
+      "pr_auc_ci95": [
+        0.9920843737478829,
+        0.9947342677950074
+      ],
+      "per_class_recall": {
+        "analysis": {
+          "count": 1,
+          "recall": 1.0
+        },
+        "backdoor": {
+          "count": 15,
+          "recall": 1.0
+        },
+        "bot": {
+          "count": 241,
+          "recall": 1.0
+        },
+        "brute force": {
+          "count": 86,
+          "recall": 1.0
+        },
+        "ddos": {
+          "count": 2175,
+          "recall": 1.0
+        },
+        "dos": {
+          "count": 840,
+          "recall": 1.0
+        },
+        "exploits": {
+          "count": 25,
+          "recall": 1.0
+        },
+        "fuzzers": {
+          "count": 20,
+          "recall": 1.0
+        },
+        "generic": {
+          "count": 10,
+          "recall": 1.0
+        },
+        "infilteration": {
+          "count": 346,
+          "recall": 0.7774566473988439
+        },
+        "reconnaissance": {
+          "count": 114,
+          "recall": 1.0
+        },
+        "theft": {
+          "count": 13,
+          "recall": 1.0
+        },
+        "injection": {
+          "count": 227,
+          "recall": 1.0
+        },
+        "mitm": {
+          "count": 3,
+          "recall": 1.0
+        },
+        "password": {
+          "count": 251,
+          "recall": 1.0
+        },
+        "ransomware": {
+          "count": 5,
+          "recall": 1.0
+        },
+        "scanning": {
+          "count": 818,
+          "recall": 1.0
+        },
+        "xss": {
+          "count": 574,
+          "recall": 1.0
+        }
+      }
+    },
+    "seen_host_subset": {
+      "n": 19098,
+      "n_attack": 5764,
+      "threshold": 0.10629609881741912,
+      "accuracy": 0.9215101057702377,
+      "precision": 0.7999718666479111,
+      "recall": 0.9866412213740458,
+      "f1": 0.8835547269478754,
+      "fpr": 0.10664466776661168,
+      "fnr": 0.013358778625954198,
+      "roc_auc": 0.9955606617656625,
+      "pr_auc": 0.9934558757006701,
+      "tpr_at_5pct_fpr": 0.9850798056904927,
+      "confusion": {
+        "tn": 11912,
+        "fp": 1422,
+        "fn": 77,
+        "tp": 5687
+      },
+      "roc_auc_ci95": [
+        0.9945224609173821,
+        0.9965772835979467
+      ],
+      "pr_auc_ci95": [
+        0.9920843737478829,
+        0.9947342677950074
+      ],
+      "per_class_recall": {
+        "analysis": {
+          "count": 1,
+          "recall": 1.0
+        },
+        "backdoor": {
+          "count": 15,
+          "recall": 1.0
+        },
+        "bot": {
+          "count": 241,
+          "recall": 1.0
+        },
+        "brute force": {
+          "count": 86,
+          "recall": 1.0
+        },
+        "ddos": {
+          "count": 2175,
+          "recall": 1.0
+        },
+        "dos": {
+          "count": 840,
+          "recall": 1.0
+        },
+        "exploits": {
+          "count": 25,
+          "recall": 1.0
+        },
+        "fuzzers": {
+          "count": 20,
+          "recall": 1.0
+        },
+        "generic": {
+          "count": 10,
+          "recall": 1.0
+        },
+        "infilteration": {
+          "count": 346,
+          "recall": 0.7774566473988439
+        },
+        "reconnaissance": {
+          "count": 114,
+          "recall": 1.0
+        },
+        "theft": {
+          "count": 13,
+          "recall": 1.0
+        },
+        "injection": {
+          "count": 227,
+          "recall": 1.0
+        },
+        "mitm": {
+          "count": 3,
+          "recall": 1.0
+        },
+        "password": {
+          "count": 251,
+          "recall": 1.0
+        },
+        "ransomware": {
+          "count": 5,
+          "recall": 1.0
+        },
+        "scanning": {
+          "count": 818,
+          "recall": 1.0
+        },
+        "xss": {
+          "count": 574,
+          "recall": 1.0
+        }
+      }
+    }
+  },
+  "bimambaformer": {
+    "full_test": {
+      "n": 19098,
+      "n_attack": 5764,
+      "threshold": 0.02731439471244812,
+      "accuracy": 0.895748245889622,
+      "precision": 0.7487145682267633,
+      "recall": 0.9852532963219987,
+      "f1": 0.8508502509551277,
+      "fpr": 0.14294285285735714,
+      "fnr": 0.014746703678001388,
+      "roc_auc": 0.9890756850082548,
+      "pr_auc": 0.9776870340994476,
+      "tpr_at_5pct_fpr": 0.9738029146426093,
+      "confusion": {
+        "tn": 11428,
+        "fp": 1906,
+        "fn": 85,
+        "tp": 5679
+      },
+      "roc_auc_ci95": [
+        0.9877469955855764,
+        0.9902767937369915
+      ],
+      "pr_auc_ci95": [
+        0.9747078953990406,
+        0.9800408613408798
+      ],
+      "per_class_recall": {
+        "analysis": {
+          "count": 1,
+          "recall": 1.0
+        },
+        "backdoor": {
+          "count": 15,
+          "recall": 1.0
+        },
+        "bot": {
+          "count": 241,
+          "recall": 1.0
+        },
+        "brute force": {
+          "count": 86,
+          "recall": 0.9883720930232558
+        },
+        "ddos": {
+          "count": 2175,
+          "recall": 1.0
+        },
+        "dos": {
+          "count": 840,
+          "recall": 1.0
+        },
+        "exploits": {
+          "count": 25,
+          "recall": 1.0
+        },
+        "fuzzers": {
+          "count": 20,
+          "recall": 1.0
+        },
+        "generic": {
+          "count": 10,
+          "recall": 1.0
+        },
+        "infilteration": {
+          "count": 346,
+          "recall": 0.7861271676300579
+        },
+        "reconnaissance": {
+          "count": 114,
+          "recall": 1.0
+        },
+        "theft": {
+          "count": 13,
+          "recall": 1.0
+        },
+        "injection": {
+          "count": 227,
+          "recall": 1.0
+        },
+        "mitm": {
+          "count": 3,
+          "recall": 1.0
+        },
+        "password": {
+          "count": 251,
+          "recall": 1.0
+        },
+        "ransomware": {
+          "count": 5,
+          "recall": 0.8
+        },
+        "scanning": {
+          "count": 818,
+          "recall": 0.988997555012225
+        },
+        "xss": {
+          "count": 574,
+          "recall": 1.0
+        }
+      }
+    },
+    "full_test_at_shipped_threshold": {
+      "n": 19098,
+      "n_attack": 5764,
+      "threshold": 0.120483,
+      "accuracy": 0.9369043878940203,
+      "precision": 0.8363582706212188,
+      "recall": 0.9833448993754337,
+      "f1": 0.9039151582808389,
+      "fpr": 0.08317084145792711,
+      "fnr": 0.016655100624566273,
+      "roc_auc": 0.9890756850082548,
+      "pr_auc": 0.9776870340994476,
+      "tpr_at_5pct_fpr": 0.9738029146426093,
+      "confusion": {
+        "tn": 12225,
+        "fp": 1109,
+        "fn": 96,
+        "tp": 5668
+      },
+      "roc_auc_ci95": [
+        0.9877469955855764,
+        0.9902767937369915
+      ],
+      "pr_auc_ci95": [
+        0.9747078953990406,
+        0.9800408613408798
+      ],
+      "per_class_recall": {
+        "analysis": {
+          "count": 1,
+          "recall": 1.0
+        },
+        "backdoor": {
+          "count": 15,
+          "recall": 1.0
+        },
+        "bot": {
+          "count": 241,
+          "recall": 1.0
+        },
+        "brute force": {
+          "count": 86,
+          "recall": 0.9883720930232558
+        },
+        "ddos": {
+          "count": 2175,
+          "recall": 1.0
+        },
+        "dos": {
+          "count": 840,
+          "recall": 1.0
+        },
+        "exploits": {
+          "count": 25,
+          "recall": 1.0
+        },
+        "fuzzers": {
+          "count": 20,
+          "recall": 1.0
+        },
+        "generic": {
+          "count": 10,
+          "recall": 1.0
+        },
+        "infilteration": {
+          "count": 346,
+          "recall": 0.7543352601156069
+        },
+        "reconnaissance": {
+          "count": 114,
+          "recall": 1.0
+        },
+        "theft": {
+          "count": 13,
+          "recall": 1.0
+        },
+        "injection": {
+          "count": 227,
+          "recall": 1.0
+        },
+        "mitm": {
+          "count": 3,
+          "recall": 1.0
+        },
+        "password": {
+          "count": 251,
+          "recall": 1.0
+        },
+        "ransomware": {
+          "count": 5,
+          "recall": 0.8
+        },
+        "scanning": {
+          "count": 818,
+          "recall": 0.988997555012225
+        },
+        "xss": {
+          "count": 574,
+          "recall": 1.0
+        }
+      }
+    },
+    "seen_host_subset": {
+      "n": 19098,
+      "n_attack": 5764,
+      "threshold": 0.02731439471244812,
+      "accuracy": 0.895748245889622,
+      "precision": 0.7487145682267633,
+      "recall": 0.9852532963219987,
+      "f1": 0.8508502509551277,
+      "fpr": 0.14294285285735714,
+      "fnr": 0.014746703678001388,
+      "roc_auc": 0.9890756850082548,
+      "pr_auc": 0.9776870340994476,
+      "tpr_at_5pct_fpr": 0.9738029146426093,
+      "confusion": {
+        "tn": 11428,
+        "fp": 1906,
+        "fn": 85,
+        "tp": 5679
+      },
+      "roc_auc_ci95": [
+        0.9877469955855764,
+        0.9902767937369915
+      ],
+      "pr_auc_ci95": [
+        0.9747078953990406,
+        0.9800408613408798
+      ],
+      "per_class_recall": {
+        "analysis": {
+          "count": 1,
+          "recall": 1.0
+        },
+        "backdoor": {
+          "count": 15,
+          "recall": 1.0
+        },
+        "bot": {
+          "count": 241,
+          "recall": 1.0
+        },
+        "brute force": {
+          "count": 86,
+          "recall": 0.9883720930232558
+        },
+        "ddos": {
+          "count": 2175,
+          "recall": 1.0
+        },
+        "dos": {
+          "count": 840,
+          "recall": 1.0
+        },
+        "exploits": {
+          "count": 25,
+          "recall": 1.0
+        },
+        "fuzzers": {
+          "count": 20,
+          "recall": 1.0
+        },
+        "generic": {
+          "count": 10,
+          "recall": 1.0
+        },
+        "infilteration": {
+          "count": 346,
+          "recall": 0.7861271676300579
+        },
+        "reconnaissance": {
+          "count": 114,
+          "recall": 1.0
+        },
+        "theft": {
+          "count": 13,
+          "recall": 1.0
+        },
+        "injection": {
+          "count": 227,
+          "recall": 1.0
+        },
+        "mitm": {
+          "count": 3,
+          "recall": 1.0
+        },
+        "password": {
+          "count": 251,
+          "recall": 1.0
+        },
+        "ransomware": {
+          "count": 5,
+          "recall": 0.8
+        },
+        "scanning": {
+          "count": 818,
+          "recall": 0.988997555012225
+        },
+        "xss": {
+          "count": 574,
+          "recall": 1.0
+        }
+      }
+    }
+  }
+}
