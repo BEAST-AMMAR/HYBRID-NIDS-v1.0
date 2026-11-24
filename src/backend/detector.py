@@ -40,7 +40,7 @@ class HybridDetector:
             model_dir = os.path.join(os.path.dirname(__file__), "saved_models")
         self.model_dir = os.path.abspath(model_dir)
 
-        # 1. Feature columns (133 features)
+        # 1. Feature columns & Schema Validation (Copilot Issue 6)
         feat_path = os.path.join(self.model_dir, "feature_columns.json")
         if os.path.exists(feat_path):
             with open(feat_path, "r") as f:
@@ -48,6 +48,8 @@ class HybridDetector:
         else:
             self.feature_names = [f"f_{i}" for i in range(133)]
         self.n_features = len(self.feature_names)
+        if self.n_features != 133:
+            raise ValueError(f"Artifact integrity violation: expected 133 feature columns, got {self.n_features}")
 
         # 2. Hardware Compute Target
         self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -62,14 +64,13 @@ class HybridDetector:
             dropout=0.0
         ).to(self.device)
 
-        # 4. Load Trained Weights
+        # 4. Load Trained Weights (Fail loudly if corrupted or missing per Copilot Issue 6)
         weights_path = os.path.join(self.model_dir, "bi_mambaformer_best.pt")
-        if os.path.exists(weights_path):
-            state_dict = torch.load(weights_path, map_location=self.device, weights_only=True)
-            self.bi_mambaformer.load_state_dict(state_dict)
-            print(f"[*] Loaded Dual-Stream Bi-MambaFormer weights from {weights_path}")
-        else:
-            print(f"[!] Warning: Bi-MambaFormer weights not found at {weights_path}. Initialized randomly.")
+        if not os.path.exists(weights_path):
+            raise FileNotFoundError(f"Critical artifact missing: trained weights not found at {weights_path}")
+        state_dict = torch.load(weights_path, map_location=self.device, weights_only=True)
+        self.bi_mambaformer.load_state_dict(state_dict)
+        print(f"[*] Loaded Dual-Stream Bi-MambaFormer weights from {weights_path}")
         self.bi_mambaformer.eval()
 
         # Cache tokenizer projection matrix weights on CPU for fast linear saliency

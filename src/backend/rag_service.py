@@ -709,11 +709,11 @@ class RAGExplanationService:
         attack_name = context.get("name", context.get("attack_type", attack_key.replace("_", " ").title()))
         category = str(context.get("category", attack_key)).upper()
 
-        # Section 1: Header & Dynamic Threat Profile
+        # Section 1: Header & Dynamic Threat Profile (Provisional AI Assessment per Copilot Issue 11)
         explanation = f"### 🚨 NetFlow Threat Detected: {attack_name}\n\n"
         explanation += (
-            f"> **Threat Profile:** `{category}` | **Anomaly Score:** `{hybrid_score:.4f}` "
-            f"*(Calibrated 99th Percentile Threshold Exceeded)*\n\n"
+            f"> **Assessment Status:** `PROVISIONAL AI EVALUATION` | **Threat Profile:** `{category}` | **Anomaly Score:** `{hybrid_score:.4f}`\n"
+            f"> *Note: Generated from observed NetFlow telemetry and local MITRE knowledge base; subject to SOC analyst confirmation.*\n\n"
         )
 
         # Section 2: Observed Flow Telemetry

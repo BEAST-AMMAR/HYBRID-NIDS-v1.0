@@ -16,7 +16,7 @@ import numpy as np
 import pandas as pd
 from collections import defaultdict, deque
 
-from .nf_uq_pipeline import NfUqFeatureAdapter
+from .sequences import PureNfUqAdapter
 
 
 class NetPacket:
@@ -375,15 +375,8 @@ class RealTimeFeatureExtractor:
         with open(feat_path, "r") as f:
             self.feature_columns = json.load(f)
 
-        # 2. Load NfUqFeatureAdapter
-        project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
-        config_path = os.path.join(project_root, "configs", "nf_uq.yaml")
-        with open(config_path, "r") as f:
-            cfg = yaml.safe_load(f)
-
-        self.adapter = NfUqFeatureAdapter(cfg)
-        adapter_prefix = os.path.join(self.models_dir, "nf_uq_adapter")
-        self.adapter.load(adapter_prefix)
+        # 2. Load PureNfUqAdapter (pure NumPy/SciPy/Joblib, zero TensorFlow dependency)
+        self.adapter = PureNfUqAdapter(model_dir=self.models_dir)
 
         # 3. Connection state tables
         self.active_connections = {}  # key: (src, dst, sport, dport, proto)

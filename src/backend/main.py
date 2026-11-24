@@ -61,8 +61,9 @@ rag_service = RAGExplanationService()
 
 # WebSocket clients
 connected_clients = set()
-# Background processing queue
-packet_queue = queue.Queue()
+# Background processing queue (bounded to prevent memory exhaustion per Copilot Issue 9)
+packet_queue = queue.Queue(maxsize=10000)
+current_capture_mode = "virtual_synthetic"
 
 @app.post("/signup", response_model=schemas.User)
 def create_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
@@ -166,14 +167,18 @@ class CaptureModeRequest(BaseModel):
 
 @app.post("/api/capture/mode")
 async def set_capture_mode(request: CaptureModeRequest, current_user: models.User = Depends(auth.get_current_user)):
+    global current_capture_mode
     mode = request.mode
     if mode == 'live':
+        current_capture_mode = "live_scapy_estimated"
         generator_instance.stop()
         return {"status": "success", "message": "Live network sniffing active. Synthetic generator stopped."}
     elif mode == 'virtual_synthetic':
+        current_capture_mode = "synthetic_replay"
         generator_instance.start(virtual=True, target_queue=packet_queue)
         return {"status": "success", "message": "Virtual synthetic injection started."}
     elif mode == 'physical_synthetic':
+        current_capture_mode = "physical_injection"
         generator_instance.start(virtual=False, target_queue=packet_queue)
         return {"status": "success", "message": "Physical synthetic injection started."}
     else:
@@ -307,7 +312,13 @@ async def upload_dataset(
     if not file.filename.endswith(('.csv', '.parquet', '.txt', '.pcap')):
         raise HTTPException(status_code=400, detail="Only .csv, .parquet, or .pcap files are supported")
         
+    MAX_UPLOAD_SIZE = 100 * 1024 * 1024  # 100 MB limit (Copilot Issue 9)
     content = await file.read()
+    if len(content) > MAX_UPLOAD_SIZE:
+        raise HTTPException(
+            status_code=413, 
+            detail=f"Payload too large ({len(content)/(1024*1024):.1f} MB). Maximum allowed upload is 100 MB."
+        )
     
     if file.filename.endswith('.pcap'):
         def process_pcap():
@@ -505,7 +516,8 @@ async def process_packets():
                         "type": "log",
                         "is_anomaly": bool(is_anomaly),
                         "score": float(score),
-                        "packet": packet_info
+                        "packet": packet_info,
+                        "telemetry_source": current_capture_mode
                     }
                     
                     if is_anomaly:

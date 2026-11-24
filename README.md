@@ -314,6 +314,7 @@ Raw Network Interface (NIC) / Live Sniffer / PCAP Replay / Synthetic Stream
 ├── tests/
 │   ├── test_e2e_verification.py           # Comprehensive end-to-end pipeline verification test
 │   ├── test_live_websocket_pipeline.py    # Live WebSocket client & server integration test
+│   ├── test_offline_runtime_parity.py     # Offline forward vs runtime detector numerical parity test (diff <= 1e-5)
 │   └── diagnostics/                       # Diagnostic inspection scripts
 └── venv/                                  # Python virtual environment (PyTorch CUDA 12.8)
 ```
