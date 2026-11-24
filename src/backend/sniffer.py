@@ -196,7 +196,7 @@ class NetFlowConnection:
         is_legitimate_handshake = (
             self.proto == 6 
             and (self.in_pkts + self.out_pkts) <= 25 
-            and (self.tcp_flags & 0x08 == 0) # No RST
+            and (self.tcp_flags & 0x04 == 0) # No RST
             and (self.dport in (80, 443, 8080, 8443, 53, 25, 21, 110, 143) or self.sport in (80, 443, 8080, 8443, 53, 25, 21, 110, 143)) 
             and unique_ports <= 5
             and (not is_syn_only or flows_10s <= 3)

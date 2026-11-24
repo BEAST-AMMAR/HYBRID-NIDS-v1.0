@@ -217,16 +217,40 @@ class RAGExplanationService:
 
         # -----------------------------------------------------------------------
         # Rule 1: Port Scanning & Network Enumeration (HIGHEST HEURISTIC PRIORITY)
-        # Evaluated before single-port rules to prevent a multi-port scan touching
-        # port 22 or port 445 from being misclassified as brute force or worms!
-        # Requires: multiple distinct ports targeted with low or unreplied response
         # -----------------------------------------------------------------------
-        if unique_ports >= 4 or (unique_ports >= 3 and flows_10s >= 3):
+        if unique_ports >= 3 or (unique_ports >= 2 and flows_10s >= 2):
             if out_bytes < 500 or out_pkts <= 1:
                 return "scanning"
 
         # -----------------------------------------------------------------------
-        # Rule 2: Network Reconnaissance (ICMP sweep or wide-subnet scan)
+        # Rule 2: Authentication Brute Force (Evaluated BEFORE generic SYN Flood!)
+        # -----------------------------------------------------------------------
+        AUTH_PORTS = (22, 3389, 21, 23, 1433, 3306, 5432)
+        if (dport in AUTH_PORTS or sport in AUTH_PORTS) and unique_ports <= 2:
+            if flows_10s >= 2 or in_pkts >= 2:
+                return "brute_force"
+
+        # -----------------------------------------------------------------------
+        # Rule 3: Botnet C2 Beaconing (External C2 channels evaluated BEFORE shellcode)
+        # -----------------------------------------------------------------------
+        INTERNAL_PREFIXES = ("192.168.", "10.", "172.16.", "172.17.", "172.18.",
+                             "172.19.", "172.20.", "172.21.", "172.22.", "172.23.",
+                             "172.24.", "172.25.", "172.26.", "172.27.", "172.28.",
+                             "172.29.", "172.30.", "172.31.")
+        dst = str(info.get("dst", ""))
+        is_external_dst = not any(dst.startswith(p) for p in INTERNAL_PREFIXES) and dst not in ("unknown", "", "127.0.0.1", "localhost")
+
+        if is_external_dst and dport in (6666, 6667, 8888, 8080) and in_bytes < 500:
+            if duration_ms > 10_000 or in_pkts > 20:
+                return "backdoor"
+            return "bot"
+
+        # Tiny persistent beacons to external IPs on non-standard ports or SSL
+        if is_external_dst and in_bytes < 300 and out_bytes < 300 and (duration_ms > 20_000 or (dport not in (80, 53) and in_pkts <= 2)):
+            return "bot"
+
+        # -----------------------------------------------------------------------
+        # Rule 4: Network Reconnaissance (ICMP sweep or wide-subnet scan)
         # -----------------------------------------------------------------------
         if proto == "ICMP" and (flows_10s >= 8 or unique_ports >= 4):
             return "reconnaissance"
@@ -234,20 +258,20 @@ class RAGExplanationService:
             return "reconnaissance"
 
         # -----------------------------------------------------------------------
-        # Rule 3: Volumetric Floods (DoS / DDoS & SYN Floods)
+        # Rule 5: Volumetric Floods (DoS / DDoS & SYN Floods)
         # -----------------------------------------------------------------------
         is_syn = (flags & 0x02) != 0 or "syn" in features_str or flags == 2
         # SYN flood: TCP SYN connection attempts with high burst rate and unreplied handshake
-        if proto == "TCP" and is_syn and (flows_10s >= 8 or in_pkts >= 15) and (out_bytes == 0 or out_pkts == 0):
-            return "ddos" if flows_10s >= 20 else "dos"
+        if proto == "TCP" and is_syn and (flows_10s >= 4 or in_pkts >= 5) and (out_bytes == 0 or out_pkts == 0):
+            return "ddos" if flows_10s >= 12 else "dos"
 
         # High-volume multi-source DDoS burst
         if (in_pkts > 80 or in_bytes > 80_000) and flows_10s >= 15:
             return "ddos"
 
-        # Single-source high-rate DoS (large payload or fast packet flood with unreplied response)
+        # Single-source high-rate DoS / UDP large-payload flood
         is_unreplied_flood = (out_bytes == 0 or out_pkts <= 1 or in_bytes > 15 * max(out_bytes, 1))
-        if in_pkts >= 100 and is_unreplied_flood:
+        if proto == "UDP" and in_bytes >= 1000 and is_unreplied_flood:
             return "dos"
         if in_pkts >= 20 and duration_ms < 3000 and (out_bytes == 0 or out_pkts == 0):
             return "dos"
@@ -255,25 +279,13 @@ class RAGExplanationService:
             return "dos"
 
         # -----------------------------------------------------------------------
-        # Rule 4: Data Exfiltration / Theft (Massive unauthorized outbound egress)
+        # Rule 6: Data Exfiltration / Theft (Massive unauthorized outbound egress)
         # -----------------------------------------------------------------------
-        # Theft requires outbound data exfiltration: source sends massive payload (>10MB)
-        # to a non-standard external port with minimal/no response bytes
         if in_bytes > 10_000_000 and out_bytes < 50_000 and dport not in (80, 443, 8080, 8443):
             return "theft"
 
         # -----------------------------------------------------------------------
-        # Rule 5: Authentication Brute Force
-        # TARGETED: requires authentication port AND focused targets (unique_ports <= 2)
-        # -----------------------------------------------------------------------
-        AUTH_PORTS = (22, 3389, 21, 23, 1433, 3306, 5432)
-        if (dport in AUTH_PORTS or sport in AUTH_PORTS) and unique_ports <= 2:
-            if flows_10s >= 4 or in_pkts >= 15:
-                return "brute_force"
-
-        # -----------------------------------------------------------------------
-        # Rule 6: Ransomware / Worm (SMB port 445 / 139)
-        # TARGETED: requires unique_ports <= 2
+        # Rule 7: Ransomware / Worm (SMB port 445 / 139)
         # -----------------------------------------------------------------------
         if (dport in (445, 139) or sport in (445, 139)) and unique_ports <= 2:
             if in_bytes > 10_000 or out_bytes > 10_000:
@@ -282,9 +294,9 @@ class RAGExplanationService:
                 return "worms"
 
         # -----------------------------------------------------------------------
-        # Rule 7: Shellcode staging on well-known exploit ports
+        # Rule 8: Shellcode staging on well-known exploit ports
         # -----------------------------------------------------------------------
-        if dport in (1347, 4444, 31337, 1234, 6666, 9001) or sport in (4444, 31337):
+        if dport in (1347, 4444, 31337, 1234, 9001) or sport in (4444, 31337):
             return "shellcode"
 
         # -----------------------------------------------------------------------

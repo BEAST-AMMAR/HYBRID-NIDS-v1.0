@@ -127,15 +127,19 @@ class HybridDetector:
 
     def get_top_anomalous_features(self, current_flow_vector: np.ndarray, top_k: int = 3):
         """
-        Sub-millisecond feature importance attribution via input projection saliency.
-        Multiplies feature magnitude |x_j| by tokenizer projection sensitivity sum_i |W_ij|.
+        Feature importance attribution:
+        Uses exact neural input-gradient saliency if computed during forward pass,
+        or falls back to de-biased input projection saliency (masking quantile zero-clamp artifacts).
         """
         if current_flow_vector.ndim > 1:
             vec = current_flow_vector[0]
         else:
             vec = current_flow_vector
 
-        saliency = np.abs(vec) * self._proj_weights_abs_sum
+        # Mask out quantile zero-clamp artifacts (-5.1993) on unused optional protocol fields
+        is_zero_clamped = np.isclose(vec, -5.1993375, atol=0.05)
+        effective_mag = np.where(is_zero_clamped, 0.05, np.abs(vec))
+        saliency = effective_mag * self._proj_weights_abs_sum
         top_indices = np.argsort(saliency)[-top_k:][::-1]
         return [self.feature_names[i] for i in top_indices if i < len(self.feature_names)]
 
@@ -231,7 +235,21 @@ class HybridDetector:
                 is_anomaly = bool(threat_score > active_thr)
                 self.score_buffer.append(threat_score)
 
-                top_features = self.get_top_anomalous_features(flow_vec, top_k=3)
+                if is_anomaly or explain:
+                    # Exact neural input-gradient saliency |d(logit)/dx| at the current flow step
+                    x_grad = x_t.detach().clone().requires_grad_(True)
+                    out_grad = self.bi_mambaformer(x_grad, mask=m_t)
+                    out_grad["logits"].sum().backward()
+                    grad_vec = x_grad.grad[0, curr_step].abs().cpu().numpy()
+                    # Combine gradient sensitivity with de-biased feature magnitude
+                    is_zero_clamped = np.isclose(flow_vec, -5.1993375, atol=0.05)
+                    eff_mag = np.where(is_zero_clamped, 0.1, np.abs(flow_vec) + 0.1)
+                    saliency = grad_vec * eff_mag
+                    top_indices = np.argsort(saliency)[-3:][::-1]
+                    top_features = [self.feature_names[i] for i in top_indices if i < len(self.feature_names)]
+                else:
+                    top_features = []
+                self.last_top_features = top_features
 
                 if return_details:
                     # Provide backwards-compatible metrics (flow_attribution, gating)

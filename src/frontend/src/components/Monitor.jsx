@@ -161,8 +161,12 @@ const Monitor = ({ token, setToken }) => {
                 });
             }
         } catch (error) {
+            if (error?.response?.status === 401) {
+                alert("Session expired. Please log in again.");
+                handleLogout();
+                return;
+            }
             console.warn("Capture mode API warning:", error);
-            // Proceed to start websocket capture even if mode call returns non-critical warning
         }
 
         setLogs([]);

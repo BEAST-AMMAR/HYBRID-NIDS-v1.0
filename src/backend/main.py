@@ -165,6 +165,15 @@ from pydantic import BaseModel
 class CaptureModeRequest(BaseModel):
     mode: str # 'live', 'virtual_synthetic', 'physical_synthetic'
 
+def _drain_packet_queue():
+    """Safely clear pending packets when switching capture modes."""
+    while not packet_queue.empty():
+        try:
+            packet_queue.get_nowait()
+            packet_queue.task_done()
+        except Exception:
+            break
+
 @app.post("/api/capture/mode")
 async def set_capture_mode(request: CaptureModeRequest, current_user: models.User = Depends(auth.get_current_user)):
     global current_capture_mode
@@ -172,13 +181,16 @@ async def set_capture_mode(request: CaptureModeRequest, current_user: models.Use
     if mode == 'live':
         current_capture_mode = "live_scapy_estimated"
         generator_instance.stop()
+        _drain_packet_queue()
         return {"status": "success", "message": "Live network sniffing active. Synthetic generator stopped."}
     elif mode == 'virtual_synthetic':
         current_capture_mode = "synthetic_replay"
+        _drain_packet_queue()
         generator_instance.start(virtual=True, target_queue=packet_queue)
         return {"status": "success", "message": "Virtual synthetic injection started."}
     elif mode == 'physical_synthetic':
         current_capture_mode = "physical_injection"
+        _drain_packet_queue()
         generator_instance.start(virtual=False, target_queue=packet_queue)
         return {"status": "success", "message": "Physical synthetic injection started."}
     else:
@@ -486,10 +498,10 @@ async def process_packets():
                 if res is not None and res[0] is not None:
                     scaled_feat, raw_data = res
                     src_ip = raw_data.get("src", "Unknown")
-                    prediction = await asyncio.to_thread(detector.predict, scaled_feat, host_ip=src_ip, explain=True)
+                    prediction = await asyncio.to_thread(detector.predict, scaled_feat, host_ip=src_ip, explain=False)
                     is_anomaly = bool(prediction[0])
                     score = float(prediction[1])
-                    top_features = prediction[2] if len(prediction) == 3 else []
+                    top_features = getattr(detector, "last_top_features", []) if is_anomaly else []
                     dst_ip = raw_data.get("dst", "Unknown")
                     proto_str = raw_data.get("proto", "TCP")
                     
@@ -568,6 +580,7 @@ async def process_packets():
                                 connected_clients.remove(dc)
                 
                 packet_queue.task_done()
+                await asyncio.sleep(0) # Always yield to FastAPI HTTP handlers between packets
             else:
                 await asyncio.sleep(0.005) # Yield briefly if queue is empty
         except Exception as e:
