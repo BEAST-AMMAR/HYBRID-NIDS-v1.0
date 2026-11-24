@@ -6,9 +6,17 @@ from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.orm import Session
 from . import models, schemas, database
 import os
+import secrets
 
-# Secret key for JWT signing
-SECRET_KEY = os.getenv("JWT_SECRET_KEY", "fallback-insecure-secret-key-change-me")
+# Secret key for JWT signing with cryptographically secure fallback
+_env_secret = os.getenv("JWT_SECRET_KEY")
+if not _env_secret or _env_secret == "fallback-insecure-secret-key-change-me":
+    # Generate a cryptographically strong 256-bit runtime key to prevent token forgery
+    SECRET_KEY = os.environ.get("_GENERATED_JWT_SECRET", secrets.token_urlsafe(32))
+    os.environ["_GENERATED_JWT_SECRET"] = SECRET_KEY
+else:
+    SECRET_KEY = _env_secret
+
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
 

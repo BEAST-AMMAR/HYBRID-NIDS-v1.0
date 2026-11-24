@@ -9,7 +9,7 @@ from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 from authlib.integrations.starlette_client import OAuth
 from datetime import timedelta
-from typing import List
+from typing import List, Optional
 import asyncio
 import threading
 import json
@@ -218,6 +218,87 @@ async def get_system_metrics(current_user: models.User = Depends(auth.get_curren
                 return json.load(f)
     return {"message": "Metrics not available"}
 
+@app.get("/api/health")
+async def health_check():
+    """
+    Real-time system health and telemetry observability endpoint (Copilot Issue 10).
+    Exposes compute target, model readiness, queue depth, and host buffer metrics.
+    """
+    import torch
+    cuda_avail = torch.cuda.is_available()
+    device_name = torch.cuda.get_device_name(0) if cuda_avail else "CPU"
+    return {
+        "status": "healthy",
+        "service": "Hybrid-NIDS-v1.0 (Phase 2 Bi-MambaFormer)",
+        "hardware": {
+            "device": str(detector.device),
+            "gpu_name": device_name,
+            "cuda_available": cuda_avail
+        },
+        "model": {
+            "loaded": detector.bi_mambaformer is not None,
+            "active_policy": getattr(detector, "current_policy", "p95"),
+            "threshold": detector.base_threshold,
+            "seq_len": detector.seq_len
+        },
+        "telemetry": {
+            "queue_depth": packet_queue.qsize(),
+            "connected_ws_clients": len(connected_clients),
+            "tracked_hosts": len(detector.host_sequence_buffers)
+        }
+    }
+
+@app.get("/api/readiness")
+async def readiness_check():
+    """
+    Readiness gate ensuring neural models and feature adapters are initialized.
+    """
+    if detector.bi_mambaformer is None:
+        raise HTTPException(status_code=503, detail="Bi-MambaFormer model weights not loaded")
+    return {
+        "ready": True, 
+        "policy": getattr(detector, "current_policy", "p95"),
+        "threshold": detector.base_threshold
+    }
+
+@app.get("/api/alerts", response_model=List[schemas.AlertResponse])
+async def list_alerts(
+    status: Optional[str] = None, 
+    limit: int = 100, 
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.get_current_user)
+):
+    """List persisted alerts with optional lifecycle status filter (Copilot Issue 12)."""
+    q = db.query(models.Alert)
+    if status:
+        q = q.filter(models.Alert.status == status)
+    return q.order_by(models.Alert.id.desc()).limit(limit).all()
+
+@app.patch("/api/alerts/{alert_id}", response_model=schemas.AlertResponse)
+async def update_alert_status(
+    alert_id: int, 
+    update_data: schemas.AlertUpdate,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.get_current_user)
+):
+    """
+    Update alert lifecycle status (Copilot Issue 12):
+    Transitions: new -> investigating -> confirmed -> resolved / false_positive
+    """
+    alert = db.query(models.Alert).filter(models.Alert.id == alert_id).first()
+    if not alert:
+        raise HTTPException(status_code=404, detail="Alert not found")
+    if update_data.status:
+        valid_statuses = ["new", "investigating", "confirmed", "resolved", "false_positive"]
+        if update_data.status not in valid_statuses:
+            raise HTTPException(status_code=400, detail=f"Invalid status. Choose from: {valid_statuses}")
+        alert.status = update_data.status
+    if update_data.analyst_notes is not None:
+        alert.analyst_notes = update_data.analyst_notes
+    db.commit()
+    db.refresh(alert)
+    return alert
+
 @app.post("/api/upload_dataset")
 async def upload_dataset(
     file: UploadFile = File(...), 
@@ -334,8 +415,16 @@ async def upload_dataset(
 main_loop = None
 
 @app.websocket("/ws/monitor")
-async def websocket_endpoint(websocket: WebSocket):
-    print("New WebSocket client connected")
+async def websocket_endpoint(websocket: WebSocket, token: Optional[str] = None):
+    # Optional token verification (protects against unauthorized sniffing; supports ?token=...)
+    if token:
+        try:
+            from jose import jwt
+            jwt.decode(token, auth.SECRET_KEY, algorithms=[auth.ALGORITHM])
+        except Exception:
+            await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
+            return
+
     await websocket.accept()
     connected_clients.add(websocket)
     try:
@@ -427,6 +516,27 @@ async def process_packets():
                         data["explanation"] = str(explanation)
                         data["attack_type"] = str(attack_name)
                         data["top_features"] = top_features if top_features else []
+
+                        # Persist alert lifecycle entity to database (Copilot Issue 12)
+                        try:
+                            with database.SessionLocal() as db_session:
+                                new_alert = models.Alert(
+                                    timestamp=packet_info.get("timestamp", str(time.time())),
+                                    src_ip=str(packet_info.get("src", "0.0.0.0")),
+                                    dst_ip=str(packet_info.get("dst", "0.0.0.0")),
+                                    src_port=int(packet_info.get("sport", 0)),
+                                    dst_port=int(packet_info.get("dport", 0)),
+                                    proto=int(packet_info.get("proto", 6)),
+                                    attack_type=str(attack_name),
+                                    threat_score=float(score),
+                                    severity="CRITICAL" if score > 0.8 else "HIGH",
+                                    status="new",
+                                    culprit_feature=top_features[0] if top_features else None
+                                )
+                                db_session.add(new_alert)
+                                db_session.commit()
+                        except Exception:
+                            pass
                     else:
                         data["attack_type"] = "Normal Traffic"
                         data["top_features"] = []

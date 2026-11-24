@@ -236,14 +236,17 @@ Raw Network Interface (NIC) / Live Sniffer / PCAP Replay / Synthetic Stream
 ├── README.md                              # Master project documentation & comparative tables
 ├── RESEARCH_THESIS.md                     # Comprehensive 10-chapter academic research thesis
 ├── memory.md                              # Project memory, architectural history & operational runbook
+├── fixes.md                               # Copilot 15-point audit & engineering remediation guide
 ├── THESIS_COMPARATIVE_ANALYSIS.md         # Comprehensive 3-Baseline thesis comparative study
 ├── DEFENSE_PRESENTATION_AND_QA.md         # 9-Slide defense presentation & examiner defense guide
+├── split_manifest.json                    # Cryptographic split integrity & artifact SHA-256 manifest
 ├── eval_results_phase2.json               # Canonical Phase 2 test benchmark metrics
 ├── eval_results_phase2.txt                # Human-readable test evaluation report
 ├── knowledge_base.json                    # 20 NF-UQ attack intelligence taxonomy
 ├── requirements.txt                       # Frozen Python virtual environment dependencies
 ├── generate_figures.py                    # Phase 2 ROC/PR and training figure generator
 ├── generate_all_baseline_figures.py       # Cross-baseline 3-generation comparative figure generator
+├── verify_split_manifest.py               # Split manifest & SHA-256 verification runner
 ├── create_admin.py                        # Administrative user creation utility
 ├── configs/
 │   └── nf_uq.yaml                         # NF-UQ-NIDS-v2 dataset and training configs

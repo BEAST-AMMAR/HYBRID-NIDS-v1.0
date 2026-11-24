@@ -1,0 +1,75 @@
+{
+  "manifest_version": "1.0.0",
+  "benchmark": "NF-UQ-NIDS-v2",
+  "benchmark_underlying_sources": [
+    "NF-CSE-CIC-IDS2018-v2",
+    "NF-ToN-IoT-v2",
+    "NF-UNSW-NB15-v2",
+    "NF-BoT-IoT-v2"
+  ],
+  "split_integrity_assertions": {
+    "partitions_total": 52,
+    "training_partitions": {
+      "range": "part_00 to part_47",
+      "count": 48
+    },
+    "validation_partitions": {
+      "range": "part_48 to part_49",
+      "count": 2
+    },
+    "held_out_test_partitions": {
+      "range": "part_50 to part_51",
+      "count": 2
+    },
+    "partition_disjointness_verified": true,
+    "ip_feature_exclusion_verified": true,
+    "note": "Source IP and Destination IP are excluded from model input features and used strictly for rolling sequence session window grouping."
+  },
+  "model_architecture": {
+    "name": "Dual-Stream Hybrid Bi-MambaFormer",
+    "input_dimension": 133,
+    "sequence_length": 32,
+    "stream_1": "Bidirectional Mamba SSM (d_model=128, state=16, expand=2)",
+    "stream_2": "Multi-Head Temporal Self-Attention (4 heads, d_k=32, mask-aware)",
+    "fusion": "Adaptive Gated Fusion (Learned Element-Wise Gate G_t)",
+    "pooling": "Attention-Weighted Temporal Pooling (w_t in R^32)",
+    "calibrated_threshold": 0.120483
+  },
+  "artifacts_cryptographic_verification": {
+    "bi_mambaformer_checkpoint": {
+      "path": "src/backend/saved_models/bi_mambaformer_best.pt",
+      "size_bytes": 1537793,
+      "sha256": "75bafba3951f804acf17dd7131a1339f233fd58a29ed88d1a057c922702ccb27"
+    },
+    "adapter_metadata": {
+      "path": "src/backend/saved_models/nf_uq_adapter_meta.joblib",
+      "size_bytes": 7024,
+      "sha256": "8af95500e92a6da5e0bd6db31866d070d15f1c4d16e213daf124a90bda63c168"
+    },
+    "quantile_transformer": {
+      "path": "src/backend/saved_models/nf_uq_adapter_quantile.joblib",
+      "size_bytes": 240551,
+      "sha256": "bbcd2d184380e893deeb1f9ddb607c52c88e83c0b258cad194e5ae0bd6eca97e"
+    },
+    "feature_columns": {
+      "path": "src/backend/saved_models/feature_columns.json",
+      "size_bytes": 2992,
+      "sha256": "937ebc39464c39da5a2321e7424a988dbc4720c3ea6c2242ddda7a3e2dc10754"
+    },
+    "calibrated_threshold": {
+      "path": "src/backend/saved_models/bi_mambaformer_threshold.txt",
+      "size_bytes": 10,
+      "sha256": "e23d473259f5f9bafd317c88d987a3000ef7a79bedeab139357f7aba1d20c582"
+    }
+  },
+  "evaluation_summary": {
+    "test_windows_evaluated": 19098,
+    "accuracy": 0.936904,
+    "roc_auc": 0.989076,
+    "pr_auc": 0.977687,
+    "recall": 0.983345,
+    "precision_p95": 0.836358,
+    "false_negative_rate": 0.016655,
+    "false_positive_rate": 0.083171
+  }
+}

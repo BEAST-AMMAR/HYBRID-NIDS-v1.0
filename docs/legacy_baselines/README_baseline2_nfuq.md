@@ -1,11 +1,12 @@
 # 🛡️ Hybrid ML-Based Network Intrusion Detection System (Hybrid NIDS)
+## Baseline 2: Deep Autoencoder + Latent IF on NF-UQ-NIDS-v2 (Historical Archive)
 
 [![Python 3.10+](https://img.shields.io/badge/Python-3.10%2B-blue.svg)](https://www.python.org/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.100%2B-009688.svg)](https://fastapi.tiangolo.com/)
 [![React](https://img.shields.io/badge/React-19-61DAFB.svg)](https://react.dev/)
 [![TensorFlow](https://img.shields.io/badge/TensorFlow-2.16%2B-FF6F00.svg)](https://www.tensorflow.org/)
 [![Scikit-Learn](https://img.shields.io/badge/scikit--learn-1.3%2B-F7931E.svg)](https://scikit-learn.org/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Proprietary](https://img.shields.io/badge/Status-Confidential%20%7C%20All%20Rights%20Reserved-red.svg)]()
 
 A real-time, explainable **Network Intrusion Detection System (NIDS)** combining a dual-engine **Hybrid Machine Learning Architecture** (Deep Autoencoder + Isolation Forest Ensemble) with **Explainable AI (SHAP)** and **Retrieval-Augmented Generation (RAG)** for automated threat explanation and real-time security operations center (SOC) intelligence.
 
@@ -236,6 +237,8 @@ This evaluates the models across all 22,544 test packets and outputs the exact a
 
 ---
 
-## 📄 License
+## 🔒 Intellectual Property & Academic Notice
 
-This project is licensed under the MIT License. See [LICENSE](LICENSE) for details.
+**Copyright © 2026. All Rights Reserved.**
+
+This document details legacy Baseline 2 experimental research conducted as an evolutionary milestone for academic thesis evaluation and publication. All rights are reserved under academic embargo. Unauthorized reproduction or commercial use is strictly prohibited.

@@ -1,5 +1,6 @@
-from sqlalchemy import Column, Integer, String, Boolean
+from sqlalchemy import Column, Integer, String, Boolean, Float, DateTime
 from .database import Base
+from datetime import datetime, timezone
 
 class User(Base):
     __tablename__ = "users"
@@ -11,3 +12,25 @@ class User(Base):
     full_name = Column(String)
     oauth_provider = Column(String, nullable=True)
     oauth_id = Column(String, nullable=True)
+
+class Alert(Base):
+    """
+    Alert lifecycle entity supporting real-time SOC analyst workflow:
+    Status transitions: new -> investigating -> confirmed -> resolved / false_positive
+    """
+    __tablename__ = "alerts"
+
+    id = Column(Integer, primary_key=True, index=True)
+    timestamp = Column(String, index=True)
+    src_ip = Column(String, index=True)
+    dst_ip = Column(String, index=True)
+    src_port = Column(Integer, nullable=True)
+    dst_port = Column(Integer, nullable=True)
+    proto = Column(Integer, default=6)
+    attack_type = Column(String, index=True)
+    threat_score = Column(Float, index=True)
+    severity = Column(String, default="HIGH")  # CRITICAL, HIGH, MEDIUM, LOW
+    status = Column(String, default="new", index=True)  # new, investigating, confirmed, resolved, false_positive
+    analyst_notes = Column(String, nullable=True)
+    culprit_feature = Column(String, nullable=True)
+    mitre_technique = Column(String, nullable=True)

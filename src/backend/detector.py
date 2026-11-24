@@ -201,16 +201,21 @@ class HybridDetector:
                 buf = self.host_sequence_buffers[resolved_host]
                 buf.append(flow_vec)
                 k = len(buf)
-
-                # Form sequence window (1, 32, 133) with steady-state replication for short sessions
                 buf_arr = np.array(buf, dtype=np.float32)
+
+                # Form sequence window (1, 32, 133) with exact training parity (mask-aware zero padding)
+                win_data = np.zeros((self.seq_len, flow_vec.shape[0]), dtype=np.float32)
+                mask_data = np.zeros(self.seq_len, dtype=bool)
+
                 if k < self.seq_len:
-                    repeats = (self.seq_len // k) + 1
-                    win_data = np.tile(buf_arr, (repeats, 1))[:self.seq_len]
+                    win_data[:k] = buf_arr
+                    mask_data[:k] = True
                 else:
-                    win_data = buf_arr[-self.seq_len:]
+                    win_data[:] = buf_arr[-self.seq_len:]
+                    mask_data[:] = True
+
                 win = np.expand_dims(win_data, axis=0)
-                mask = np.ones((1, self.seq_len), dtype=bool)
+                mask = np.expand_dims(mask_data, axis=0)
 
                 x_t = torch.from_numpy(win).to(self.device)
                 m_t = torch.from_numpy(mask).to(self.device)
@@ -219,7 +224,8 @@ class HybridDetector:
                     out = self.bi_mambaformer(x_t, mask=m_t)
                     threat_score = float(out["threat_score"].item())
                     flow_attn = out["flow_attribution"][0].cpu().numpy()
-                    gating = float(out["gate_weights"][0, k - 1].mean().item())
+                    curr_step = min(k - 1, self.seq_len - 1)
+                    gating = float(out["gate_weights"][0, curr_step].mean().item())
 
                 is_anomaly = bool(threat_score > active_thr)
                 self.score_buffer.append(threat_score)
