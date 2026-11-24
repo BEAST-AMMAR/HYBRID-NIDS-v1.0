@@ -24,6 +24,7 @@ A state-of-the-art, 100% local, air-gapped **Network Intrusion Detection System 
 | **Academic Thesis Comparative Study** | [THESIS_COMPARATIVE_ANALYSIS.md](file:///e:/major%20phase%202%202.0/phase2%20models%20nfuq/THESIS_COMPARATIVE_ANALYSIS.md) | Publication-ready comparative analysis, stealth breakdown, generalization proof, and copy-paste LaTeX tables. |
 | **Defense Slide Deck & Examiner FAQ** | [DEFENSE_PRESENTATION_AND_QA.md](file:///e:/major%20phase%202%202.0/phase2%20models%20nfuq/DEFENSE_PRESENTATION_AND_QA.md) | 9-slide presentation blueprint with speaker talking points and answers to 6 critical examiner questions. |
 | **System Context & Engineering Audit** | [memory.md](file:///e:/major%20phase%202%202.0/phase2%20models%20nfuq/memory.md) | In-depth architectural context, root cause analysis of false alarms, code diffs, and verification logs. |
+| **Git Audit & Rollback Trace Log** | [AUDIT_AND_ROLLBACK_LOG.md](file:///e:/major%20phase%202%202.0/phase2%20models%20nfuq/AUDIT_AND_ROLLBACK_LOG.md) | Immutable chronological commit ledger, verification traces, and exact Git rollback commands. |
 | **Baseline 1 Documentation** | [README_baseline1_nsl.md](file:///e:/major%20phase%202%202.0/phase2%20models%20nfuq/docs/legacy_baselines/README_baseline1_nsl.md) | Full technical README and benchmark outputs of Baseline 1 on NSL-KDD. |
 | **Baseline 2 Documentation** | [README_baseline2_nfuq.md](file:///e:/major%20phase%202%202.0/phase2%20models%20nfuq/docs/legacy_baselines/README_baseline2_nfuq.md) | Full technical README and benchmark outputs of Baseline 2 on NF-UQ-NIDS-v2. |
 | **End-to-End Pipeline Verification** | [test_e2e_verification.py](file:///e:/major%20phase%202%202.0/phase2%20models%20nfuq/tests/test_e2e_verification.py) | Automated GPU test script validating all 5 attack vectors, normal flows, policy shifts, and RAG. |
@@ -236,6 +237,7 @@ Raw Network Interface (NIC) / Live Sniffer / PCAP Replay / Synthetic Stream
 ├── README.md                              # Master project documentation & comparative tables
 ├── RESEARCH_THESIS.md                     # Comprehensive 10-chapter academic research thesis
 ├── memory.md                              # Project memory, architectural history & operational runbook
+├── AUDIT_AND_ROLLBACK_LOG.md              # Immutable commit ledger, traces & exact rollback guide
 ├── fixes.md                               # Copilot 15-point audit & engineering remediation guide
 ├── THESIS_COMPARATIVE_ANALYSIS.md         # Comprehensive 3-Baseline thesis comparative study
 ├── DEFENSE_PRESENTATION_AND_QA.md         # 9-Slide defense presentation & examiner defense guide
