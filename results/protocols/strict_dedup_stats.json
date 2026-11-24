@@ -1,0 +1,34 @@
+{
+  "rows_in": 75987976,
+  "rows_kept": 4946995,
+  "dedup_fraction_removed": 0.9348976606509429,
+  "class_counts_after_dedup": {
+    "Benign": 3093441,
+    "Analysis": 412,
+    "Backdoor": 367,
+    "Bot": 472,
+    "Brute Force": 15052,
+    "DDoS": 365853,
+    "DoS": 429035,
+    "Exploits": 22817,
+    "Fuzzers": 6922,
+    "Generic": 1845,
+    "Infilteration": 10814,
+    "Reconnaissance": 187730,
+    "Shellcode": 1427,
+    "Theft": 804,
+    "Worms": 59,
+    "injection": 130201,
+    "mitm": 3045,
+    "password": 179843,
+    "ransomware": 558,
+    "scanning": 291633,
+    "xss": 204665
+  },
+  "source_counts_after_dedup": {
+    "NF-BoT-IoT-v2": 347945,
+    "NF-CSE-CIC-IDS2018-v2": 2018805,
+    "NF-ToN-IoT-v2": 1852252,
+    "NF-UNSW-NB15-v2": 727993
+  }
+}

@@ -1,0 +1,1549 @@
+{
+  "info": {
+    "train": {
+      "windows": 98543,
+      "attack_windows": 48211,
+      "hosts": 10939
+    },
+    "val": {
+      "windows": 5666,
+      "attack_windows": 2894,
+      "hosts": 1097
+    },
+    "test": {
+      "windows": 19098,
+      "attack_windows": 5764,
+      "hosts": 3623
+    }
+  },
+  "class_counts": {
+    "train": {
+      "analysis": 4,
+      "backdoor": 98,
+      "bot": 1222,
+      "brute force": 459,
+      "ddos": 17821,
+      "dos": 8277,
+      "exploits": 125,
+      "fuzzers": 90,
+      "generic": 59,
+      "infilteration": 1641,
+      "reconnaissance": 1029,
+      "shellcode": 6,
+      "theft": 54,
+      "injection": 2139,
+      "mitm": 53,
+      "password": 2162,
+      "ransomware": 8,
+      "scanning": 6449,
+      "xss": 6515
+    },
+    "val": {
+      "analysis": 1,
+      "backdoor": 6,
+      "bot": 68,
+      "brute force": 24,
+      "ddos": 1028,
+      "dos": 531,
+      "exploits": 6,
+      "fuzzers": 2,
+      "generic": 5,
+      "infilteration": 93,
+      "reconnaissance": 78,
+      "theft": 1,
+      "injection": 108,
+      "mitm": 4,
+      "password": 132,
+      "ransomware": 1,
+      "scanning": 392,
+      "xss": 414
+    },
+    "test": {
+      "analysis": 1,
+      "backdoor": 15,
+      "bot": 241,
+      "brute force": 86,
+      "ddos": 2175,
+      "dos": 840,
+      "exploits": 25,
+      "fuzzers": 20,
+      "generic": 10,
+      "infilteration": 346,
+      "reconnaissance": 114,
+      "theft": 13,
+      "injection": 227,
+      "mitm": 3,
+      "password": 251,
+      "ransomware": 5,
+      "scanning": 818,
+      "xss": 574
+    }
+  },
+  "models": {
+    "dataset_prior": [
+      {
+        "seed": 11,
+        "n": 19098,
+        "n_attack": 5764,
+        "threshold": 0.8973316840431171,
+        "accuracy": 0.7641637867839565,
+        "precision": 0.9937304075235109,
+        "recall": 0.21998612074947954,
+        "f1": 0.36022727272727273,
+        "fpr": 0.000599970001499925,
+        "roc_auc": 0.8319937425231444,
+        "pr_auc": 0.7234677609568452,
+        "tpr_at_5pct_fpr": 0.6649895905621096,
+        "confusion": {
+          "tn": 13326,
+          "fp": 8,
+          "fn": 4496,
+          "tp": 1268
+        },
+        "roc_auc_ci95": [
+          0.8265366711434811,
+          0.8375560669968978
+        ],
+        "per_source": {
+          "NF-BoT-IoT-v2": {
+            "n": 1276,
+            "attack_fraction": 0.9937304075235109,
+            "fpr": 1.0,
+            "recall": 1.0,
+            "roc_auc": 0.5
+          },
+          "NF-CSE-CIC-IDS2018-v2": {
+            "n": 13115,
+            "attack_fraction": 0.14136484940907357,
+            "fpr": 0.0,
+            "recall": 0.0,
+            "roc_auc": 0.5
+          },
+          "NF-ToN-IoT-v2": {
+            "n": 3033,
+            "attack_fraction": 0.8456973293768546,
+            "fpr": 0.0,
+            "recall": 0.0,
+            "roc_auc": 0.5
+          },
+          "NF-UNSW-NB15-v2": {
+            "n": 1674,
+            "attack_fraction": 0.045997610513739545,
+            "fpr": 0.0,
+            "recall": 0.0,
+            "roc_auc": 0.5
+          }
+        },
+        "per_class": {
+          "analysis": {
+            "windows": 1,
+            "hosts": 1,
+            "recall": 0.0
+          },
+          "backdoor": {
+            "windows": 15,
+            "hosts": 3,
+            "recall": 0.0
+          },
+          "bot": {
+            "windows": 241,
+            "hosts": 19,
+            "recall": 0.0
+          },
+          "brute force": {
+            "windows": 86,
+            "hosts": 6,
+            "recall": 0.0
+          },
+          "ddos": {
+            "windows": 2175,
+            "hosts": 39,
+            "recall": 0.2924137931034483
+          },
+          "dos": {
+            "windows": 840,
+            "hosts": 31,
+            "recall": 0.6166666666666667
+          },
+          "exploits": {
+            "windows": 25,
+            "hosts": 7,
+            "recall": 0.0
+          },
+          "fuzzers": {
+            "windows": 20,
+            "hosts": 6,
+            "recall": 0.0
+          },
+          "generic": {
+            "windows": 10,
+            "hosts": 4,
+            "recall": 0.0
+          },
+          "infilteration": {
+            "windows": 346,
+            "hosts": 43,
+            "recall": 0.0
+          },
+          "reconnaissance": {
+            "windows": 114,
+            "hosts": 19,
+            "recall": 0.8859649122807017
+          },
+          "theft": {
+            "windows": 13,
+            "hosts": 1,
+            "recall": 1.0
+          },
+          "injection": {
+            "windows": 227,
+            "hosts": 13,
+            "recall": 0.0
+          },
+          "mitm": {
+            "windows": 3,
+            "hosts": 2,
+            "recall": 0.0
+          },
+          "password": {
+            "windows": 251,
+            "hosts": 12,
+            "recall": 0.0
+          },
+          "ransomware": {
+            "windows": 5,
+            "hosts": 3,
+            "recall": 0.0
+          },
+          "scanning": {
+            "windows": 818,
+            "hosts": 27,
+            "recall": 0.0
+          },
+          "xss": {
+            "windows": 574,
+            "hosts": 8,
+            "recall": 0.0
+          }
+        }
+      }
+    ],
+    "flow_lgbm_max": [
+      {
+        "seed": 11,
+        "n": 19098,
+        "n_attack": 5764,
+        "threshold": 0.13617821037769318,
+        "accuracy": 0.932034768038538,
+        "precision": 0.8240928882438316,
+        "recall": 0.9850798056904927,
+        "f1": 0.8974237395290027,
+        "fpr": 0.09089545522723864,
+        "roc_auc": 0.9932817008525008,
+        "pr_auc": 0.9916969162880571,
+        "tpr_at_5pct_fpr": 0.9783136710617627,
+        "confusion": {
+          "tn": 12122,
+          "fp": 1212,
+          "fn": 86,
+          "tp": 5678
+        },
+        "roc_auc_ci95": [
+          0.9919954148635903,
+          0.9946697749261592
+        ],
+        "per_source": {
+          "NF-BoT-IoT-v2": {
+            "n": 1276,
+            "attack_fraction": 0.9937304075235109,
+            "fpr": 0.875,
+            "recall": 1.0,
+            "roc_auc": 0.9681585173501577
+          },
+          "NF-CSE-CIC-IDS2018-v2": {
+            "n": 13115,
+            "attack_fraction": 0.14136484940907357,
+            "fpr": 0.10247757747979754,
+            "recall": 0.95361380798274,
+            "roc_auc": 0.9775725702985176
+          },
+          "NF-ToN-IoT-v2": {
+            "n": 3033,
+            "attack_fraction": 0.8456973293768546,
+            "fpr": 0.10256410256410256,
+            "recall": 1.0,
+            "roc_auc": 1.0
+          },
+          "NF-UNSW-NB15-v2": {
+            "n": 1674,
+            "attack_fraction": 0.045997610513739545,
+            "fpr": 0.001878522229179712,
+            "recall": 1.0,
+            "roc_auc": 1.0
+          }
+        },
+        "per_class": {
+          "analysis": {
+            "windows": 1,
+            "hosts": 1,
+            "recall": 1.0
+          },
+          "backdoor": {
+            "windows": 15,
+            "hosts": 3,
+            "recall": 1.0
+          },
+          "bot": {
+            "windows": 241,
+            "hosts": 19,
+            "recall": 1.0
+          },
+          "brute force": {
+            "windows": 86,
+            "hosts": 6,
+            "recall": 1.0
+          },
+          "ddos": {
+            "windows": 2175,
+            "hosts": 39,
+            "recall": 1.0
+          },
+          "dos": {
+            "windows": 840,
+            "hosts": 31,
+            "recall": 1.0
+          },
+          "exploits": {
+            "windows": 25,
+            "hosts": 7,
+            "recall": 1.0
+          },
+          "fuzzers": {
+            "windows": 20,
+            "hosts": 6,
+            "recall": 1.0
+          },
+          "generic": {
+            "windows": 10,
+            "hosts": 4,
+            "recall": 1.0
+          },
+          "infilteration": {
+            "windows": 346,
+            "hosts": 43,
+            "recall": 0.7514450867052023
+          },
+          "reconnaissance": {
+            "windows": 114,
+            "hosts": 19,
+            "recall": 1.0
+          },
+          "theft": {
+            "windows": 13,
+            "hosts": 1,
+            "recall": 1.0
+          },
+          "injection": {
+            "windows": 227,
+            "hosts": 13,
+            "recall": 1.0
+          },
+          "mitm": {
+            "windows": 3,
+            "hosts": 2,
+            "recall": 1.0
+          },
+          "password": {
+            "windows": 251,
+            "hosts": 12,
+            "recall": 1.0
+          },
+          "ransomware": {
+            "windows": 5,
+            "hosts": 3,
+            "recall": 1.0
+          },
+          "scanning": {
+            "windows": 818,
+            "hosts": 27,
+            "recall": 1.0
+          },
+          "xss": {
+            "windows": 574,
+            "hosts": 8,
+            "recall": 1.0
+          }
+        }
+      }
+    ],
+    "window_lgbm_pool": [
+      {
+        "seed": 11,
+        "n": 19098,
+        "n_attack": 5764,
+        "threshold": 0.04618870064981069,
+        "accuracy": 0.9289454393130171,
+        "precision": 0.8156424581005587,
+        "recall": 0.9878556557945871,
+        "f1": 0.8935268732836407,
+        "fpr": 0.09652017399130043,
+        "roc_auc": 0.9953924666709065,
+        "pr_auc": 0.9935112377631398,
+        "tpr_at_5pct_fpr": 0.984559333795975,
+        "confusion": {
+          "tn": 12047,
+          "fp": 1287,
+          "fn": 70,
+          "tp": 5694
+        },
+        "roc_auc_ci95": [
+          0.9943496696778624,
+          0.9963506319615926
+        ],
+        "per_source": {
+          "NF-BoT-IoT-v2": {
+            "n": 1276,
+            "attack_fraction": 0.9937304075235109,
+            "fpr": 1.0,
+            "recall": 1.0,
+            "roc_auc": 0.9834384858044164
+          },
+          "NF-CSE-CIC-IDS2018-v2": {
+            "n": 13115,
+            "attack_fraction": 0.14136484940907357,
+            "fpr": 0.10452002486457686,
+            "recall": 0.9622437971952535,
+            "roc_auc": 0.9842849091963012
+          },
+          "NF-ToN-IoT-v2": {
+            "n": 3033,
+            "attack_fraction": 0.8456973293768546,
+            "fpr": 0.1517094017094017,
+            "recall": 1.0,
+            "roc_auc": 0.9993727195481582
+          },
+          "NF-UNSW-NB15-v2": {
+            "n": 1674,
+            "attack_fraction": 0.045997610513739545,
+            "fpr": 0.019411396368190358,
+            "recall": 1.0,
+            "roc_auc": 0.9999268108222398
+          }
+        },
+        "per_class": {
+          "analysis": {
+            "windows": 1,
+            "hosts": 1,
+            "recall": 1.0
+          },
+          "backdoor": {
+            "windows": 15,
+            "hosts": 3,
+            "recall": 1.0
+          },
+          "bot": {
+            "windows": 241,
+            "hosts": 19,
+            "recall": 1.0
+          },
+          "brute force": {
+            "windows": 86,
+            "hosts": 6,
+            "recall": 1.0
+          },
+          "ddos": {
+            "windows": 2175,
+            "hosts": 39,
+            "recall": 1.0
+          },
+          "dos": {
+            "windows": 840,
+            "hosts": 31,
+            "recall": 1.0
+          },
+          "exploits": {
+            "windows": 25,
+            "hosts": 7,
+            "recall": 1.0
+          },
+          "fuzzers": {
+            "windows": 20,
+            "hosts": 6,
+            "recall": 1.0
+          },
+          "generic": {
+            "windows": 10,
+            "hosts": 4,
+            "recall": 1.0
+          },
+          "infilteration": {
+            "windows": 346,
+            "hosts": 43,
+            "recall": 0.7976878612716763
+          },
+          "reconnaissance": {
+            "windows": 114,
+            "hosts": 19,
+            "recall": 1.0
+          },
+          "theft": {
+            "windows": 13,
+            "hosts": 1,
+            "recall": 1.0
+          },
+          "injection": {
+            "windows": 227,
+            "hosts": 13,
+            "recall": 1.0
+          },
+          "mitm": {
+            "windows": 3,
+            "hosts": 2,
+            "recall": 1.0
+          },
+          "password": {
+            "windows": 251,
+            "hosts": 12,
+            "recall": 1.0
+          },
+          "ransomware": {
+            "windows": 5,
+            "hosts": 3,
+            "recall": 1.0
+          },
+          "scanning": {
+            "windows": 818,
+            "hosts": 27,
+            "recall": 1.0
+          },
+          "xss": {
+            "windows": 574,
+            "hosts": 8,
+            "recall": 1.0
+          }
+        }
+      }
+    ],
+    "bimambaformer": [
+      {
+        "seed": 11,
+        "n": 19098,
+        "n_attack": 5764,
+        "threshold": 0.03594832494854927,
+        "accuracy": 0.9209341292281914,
+        "precision": 0.7995774647887324,
+        "recall": 0.9849063150589868,
+        "f1": 0.8826181592039801,
+        "fpr": 0.10671966401679917,
+        "roc_auc": 0.9921614085846713,
+        "pr_auc": 0.9848381042086533,
+        "tpr_at_5pct_fpr": 0.9819569743233866,
+        "confusion": {
+          "tn": 11911,
+          "fp": 1423,
+          "fn": 87,
+          "tp": 5677
+        },
+        "roc_auc_ci95": [
+          0.9909665377291936,
+          0.9933490493989969
+        ],
+        "per_source": {
+          "NF-BoT-IoT-v2": {
+            "n": 1276,
+            "attack_fraction": 0.9937304075235109,
+            "fpr": 1.0,
+            "recall": 1.0,
+            "roc_auc": 0.9432669558359621
+          },
+          "NF-CSE-CIC-IDS2018-v2": {
+            "n": 13115,
+            "attack_fraction": 0.14136484940907357,
+            "fpr": 0.12103720806322707,
+            "recall": 0.9579288025889967,
+            "roc_auc": 0.9815698364978768
+          },
+          "NF-ToN-IoT-v2": {
+            "n": 3033,
+            "attack_fraction": 0.8456973293768546,
+            "fpr": 0.06623931623931624,
+            "recall": 0.9964912280701754,
+            "roc_auc": 0.9805917928724944
+          },
+          "NF-UNSW-NB15-v2": {
+            "n": 1674,
+            "attack_fraction": 0.045997610513739545,
+            "fpr": 0.013149655604257984,
+            "recall": 1.0,
+            "roc_auc": 0.9977108051622766
+          }
+        },
+        "per_class": {
+          "analysis": {
+            "windows": 1,
+            "hosts": 1,
+            "recall": 1.0
+          },
+          "backdoor": {
+            "windows": 15,
+            "hosts": 3,
+            "recall": 1.0
+          },
+          "bot": {
+            "windows": 241,
+            "hosts": 19,
+            "recall": 1.0
+          },
+          "brute force": {
+            "windows": 86,
+            "hosts": 6,
+            "recall": 0.9767441860465116
+          },
+          "ddos": {
+            "windows": 2175,
+            "hosts": 39,
+            "recall": 1.0
+          },
+          "dos": {
+            "windows": 840,
+            "hosts": 31,
+            "recall": 1.0
+          },
+          "exploits": {
+            "windows": 25,
+            "hosts": 7,
+            "recall": 1.0
+          },
+          "fuzzers": {
+            "windows": 20,
+            "hosts": 6,
+            "recall": 1.0
+          },
+          "generic": {
+            "windows": 10,
+            "hosts": 4,
+            "recall": 1.0
+          },
+          "infilteration": {
+            "windows": 346,
+            "hosts": 43,
+            "recall": 0.7803468208092486
+          },
+          "reconnaissance": {
+            "windows": 114,
+            "hosts": 19,
+            "recall": 1.0
+          },
+          "theft": {
+            "windows": 13,
+            "hosts": 1,
+            "recall": 1.0
+          },
+          "injection": {
+            "windows": 227,
+            "hosts": 13,
+            "recall": 1.0
+          },
+          "mitm": {
+            "windows": 3,
+            "hosts": 2,
+            "recall": 1.0
+          },
+          "password": {
+            "windows": 251,
+            "hosts": 12,
+            "recall": 1.0
+          },
+          "ransomware": {
+            "windows": 5,
+            "hosts": 3,
+            "recall": 0.8
+          },
+          "scanning": {
+            "windows": 818,
+            "hosts": 27,
+            "recall": 0.9902200488997555
+          },
+          "xss": {
+            "windows": 574,
+            "hosts": 8,
+            "recall": 1.0
+          }
+        }
+      }
+    ],
+    "mamba_only": [
+      {
+        "seed": 11,
+        "n": 19098,
+        "n_attack": 5764,
+        "threshold": 0.01975328102707863,
+        "accuracy": 0.9067441616923239,
+        "precision": 0.7702537657755462,
+        "recall": 0.9847328244274809,
+        "f1": 0.864387421000533,
+        "fpr": 0.12696865156742163,
+        "roc_auc": 0.9930790587465769,
+        "pr_auc": 0.9889417646337663,
+        "tpr_at_5pct_fpr": 0.9817834836918806,
+        "confusion": {
+          "tn": 11641,
+          "fp": 1693,
+          "fn": 88,
+          "tp": 5676
+        },
+        "roc_auc_ci95": [
+          0.9918108273955515,
+          0.9942826384529379
+        ],
+        "per_source": {
+          "NF-BoT-IoT-v2": {
+            "n": 1276,
+            "attack_fraction": 0.9937304075235109,
+            "fpr": 1.0,
+            "recall": 1.0,
+            "roc_auc": 0.9631309148264985
+          },
+          "NF-CSE-CIC-IDS2018-v2": {
+            "n": 13115,
+            "attack_fraction": 0.14136484940907357,
+            "fpr": 0.14465855607850103,
+            "recall": 0.9579288025889967,
+            "roc_auc": 0.9810048848796722
+          },
+          "NF-ToN-IoT-v2": {
+            "n": 3033,
+            "attack_fraction": 0.8456973293768546,
+            "fpr": 0.07692307692307693,
+            "recall": 0.9964912280701754,
+            "roc_auc": 0.9925559387547692
+          },
+          "NF-UNSW-NB15-v2": {
+            "n": 1674,
+            "attack_fraction": 0.045997610513739545,
+            "fpr": 0.012523481527864746,
+            "recall": 0.987012987012987,
+            "roc_auc": 0.9994836096902472
+          }
+        },
+        "per_class": {
+          "analysis": {
+            "windows": 1,
+            "hosts": 1,
+            "recall": 1.0
+          },
+          "backdoor": {
+            "windows": 15,
+            "hosts": 3,
+            "recall": 1.0
+          },
+          "bot": {
+            "windows": 241,
+            "hosts": 19,
+            "recall": 0.995850622406639
+          },
+          "brute force": {
+            "windows": 86,
+            "hosts": 6,
+            "recall": 0.9883720930232558
+          },
+          "ddos": {
+            "windows": 2175,
+            "hosts": 39,
+            "recall": 1.0
+          },
+          "dos": {
+            "windows": 840,
+            "hosts": 31,
+            "recall": 1.0
+          },
+          "exploits": {
+            "windows": 25,
+            "hosts": 7,
+            "recall": 1.0
+          },
+          "fuzzers": {
+            "windows": 20,
+            "hosts": 6,
+            "recall": 1.0
+          },
+          "generic": {
+            "windows": 10,
+            "hosts": 4,
+            "recall": 0.9
+          },
+          "infilteration": {
+            "windows": 346,
+            "hosts": 43,
+            "recall": 0.7803468208092486
+          },
+          "reconnaissance": {
+            "windows": 114,
+            "hosts": 19,
+            "recall": 1.0
+          },
+          "theft": {
+            "windows": 13,
+            "hosts": 1,
+            "recall": 1.0
+          },
+          "injection": {
+            "windows": 227,
+            "hosts": 13,
+            "recall": 1.0
+          },
+          "mitm": {
+            "windows": 3,
+            "hosts": 2,
+            "recall": 1.0
+          },
+          "password": {
+            "windows": 251,
+            "hosts": 12,
+            "recall": 1.0
+          },
+          "ransomware": {
+            "windows": 5,
+            "hosts": 3,
+            "recall": 0.8
+          },
+          "scanning": {
+            "windows": 818,
+            "hosts": 27,
+            "recall": 0.9902200488997555
+          },
+          "xss": {
+            "windows": 574,
+            "hosts": 8,
+            "recall": 1.0
+          }
+        }
+      }
+    ],
+    "attn_only": [
+      {
+        "seed": 11,
+        "n": 19098,
+        "n_attack": 5764,
+        "threshold": 0.05478271096944809,
+        "accuracy": 0.9339197821761441,
+        "precision": 0.8286131386861314,
+        "recall": 0.9847328244274809,
+        "f1": 0.8999524338037102,
+        "fpr": 0.088045597720114,
+        "roc_auc": 0.9941265276257353,
+        "pr_auc": 0.9904233307648823,
+        "tpr_at_5pct_fpr": 0.9833448993754337,
+        "confusion": {
+          "tn": 12160,
+          "fp": 1174,
+          "fn": 88,
+          "tp": 5676
+        },
+        "roc_auc_ci95": [
+          0.993000356938546,
+          0.9951577207512369
+        ],
+        "per_source": {
+          "NF-BoT-IoT-v2": {
+            "n": 1276,
+            "attack_fraction": 0.9937304075235109,
+            "fpr": 1.0,
+            "recall": 1.0,
+            "roc_auc": 0.9110311514195584
+          },
+          "NF-CSE-CIC-IDS2018-v2": {
+            "n": 13115,
+            "attack_fraction": 0.14136484940907357,
+            "fpr": 0.09865908889086226,
+            "recall": 0.9568500539374326,
+            "roc_auc": 0.9830660123094792
+          },
+          "NF-ToN-IoT-v2": {
+            "n": 3033,
+            "attack_fraction": 0.8456973293768546,
+            "fpr": 0.09188034188034189,
+            "recall": 0.9968810916179337,
+            "roc_auc": 0.994993418970027
+          },
+          "NF-UNSW-NB15-v2": {
+            "n": 1674,
+            "attack_fraction": 0.045997610513739545,
+            "fpr": 0.007514088916718848,
+            "recall": 1.0,
+            "roc_auc": 0.9995649309988697
+          }
+        },
+        "per_class": {
+          "analysis": {
+            "windows": 1,
+            "hosts": 1,
+            "recall": 1.0
+          },
+          "backdoor": {
+            "windows": 15,
+            "hosts": 3,
+            "recall": 1.0
+          },
+          "bot": {
+            "windows": 241,
+            "hosts": 19,
+            "recall": 1.0
+          },
+          "brute force": {
+            "windows": 86,
+            "hosts": 6,
+            "recall": 1.0
+          },
+          "ddos": {
+            "windows": 2175,
+            "hosts": 39,
+            "recall": 1.0
+          },
+          "dos": {
+            "windows": 840,
+            "hosts": 31,
+            "recall": 1.0
+          },
+          "exploits": {
+            "windows": 25,
+            "hosts": 7,
+            "recall": 1.0
+          },
+          "fuzzers": {
+            "windows": 20,
+            "hosts": 6,
+            "recall": 1.0
+          },
+          "generic": {
+            "windows": 10,
+            "hosts": 4,
+            "recall": 1.0
+          },
+          "infilteration": {
+            "windows": 346,
+            "hosts": 43,
+            "recall": 0.7687861271676301
+          },
+          "reconnaissance": {
+            "windows": 114,
+            "hosts": 19,
+            "recall": 1.0
+          },
+          "theft": {
+            "windows": 13,
+            "hosts": 1,
+            "recall": 1.0
+          },
+          "injection": {
+            "windows": 227,
+            "hosts": 13,
+            "recall": 1.0
+          },
+          "mitm": {
+            "windows": 3,
+            "hosts": 2,
+            "recall": 1.0
+          },
+          "password": {
+            "windows": 251,
+            "hosts": 12,
+            "recall": 1.0
+          },
+          "ransomware": {
+            "windows": 5,
+            "hosts": 3,
+            "recall": 0.8
+          },
+          "scanning": {
+            "windows": 818,
+            "hosts": 27,
+            "recall": 0.991442542787286
+          },
+          "xss": {
+            "windows": 574,
+            "hosts": 8,
+            "recall": 1.0
+          }
+        }
+      }
+    ],
+    "bilstm": [
+      {
+        "seed": 11,
+        "n": 19098,
+        "n_attack": 5764,
+        "threshold": 0.023109277710318565,
+        "accuracy": 0.9044402555241386,
+        "precision": 0.7658971243418388,
+        "recall": 0.9842123525329632,
+        "f1": 0.8614380077442867,
+        "fpr": 0.13004349782510874,
+        "roc_auc": 0.9931542046249527,
+        "pr_auc": 0.9890172259856699,
+        "tpr_at_5pct_fpr": 0.9817834836918806,
+        "confusion": {
+          "tn": 11600,
+          "fp": 1734,
+          "fn": 91,
+          "tp": 5673
+        },
+        "roc_auc_ci95": [
+          0.9918585535028092,
+          0.9942543177974213
+        ],
+        "per_source": {
+          "NF-BoT-IoT-v2": {
+            "n": 1276,
+            "attack_fraction": 0.9937304075235109,
+            "fpr": 1.0,
+            "recall": 1.0,
+            "roc_auc": 0.6096214511041008
+          },
+          "NF-CSE-CIC-IDS2018-v2": {
+            "n": 13115,
+            "attack_fraction": 0.14136484940907357,
+            "fpr": 0.1481218364266051,
+            "recall": 0.9579288025889967,
+            "roc_auc": 0.9807790479250447
+          },
+          "NF-ToN-IoT-v2": {
+            "n": 3033,
+            "attack_fraction": 0.8456973293768546,
+            "fpr": 0.07478632478632478,
+            "recall": 0.9949317738791423,
+            "roc_auc": 0.9847882407823929
+          },
+          "NF-UNSW-NB15-v2": {
+            "n": 1674,
+            "attack_fraction": 0.045997610513739545,
+            "fpr": 0.014402003757044458,
+            "recall": 1.0,
+            "roc_auc": 0.9999105465605151
+          }
+        },
+        "per_class": {
+          "analysis": {
+            "windows": 1,
+            "hosts": 1,
+            "recall": 1.0
+          },
+          "backdoor": {
+            "windows": 15,
+            "hosts": 3,
+            "recall": 1.0
+          },
+          "bot": {
+            "windows": 241,
+            "hosts": 19,
+            "recall": 1.0
+          },
+          "brute force": {
+            "windows": 86,
+            "hosts": 6,
+            "recall": 1.0
+          },
+          "ddos": {
+            "windows": 2175,
+            "hosts": 39,
+            "recall": 1.0
+          },
+          "dos": {
+            "windows": 840,
+            "hosts": 31,
+            "recall": 1.0
+          },
+          "exploits": {
+            "windows": 25,
+            "hosts": 7,
+            "recall": 1.0
+          },
+          "fuzzers": {
+            "windows": 20,
+            "hosts": 6,
+            "recall": 1.0
+          },
+          "generic": {
+            "windows": 10,
+            "hosts": 4,
+            "recall": 1.0
+          },
+          "infilteration": {
+            "windows": 346,
+            "hosts": 43,
+            "recall": 0.7745664739884393
+          },
+          "reconnaissance": {
+            "windows": 114,
+            "hosts": 19,
+            "recall": 1.0
+          },
+          "theft": {
+            "windows": 13,
+            "hosts": 1,
+            "recall": 1.0
+          },
+          "injection": {
+            "windows": 227,
+            "hosts": 13,
+            "recall": 1.0
+          },
+          "mitm": {
+            "windows": 3,
+            "hosts": 2,
+            "recall": 1.0
+          },
+          "password": {
+            "windows": 251,
+            "hosts": 12,
+            "recall": 1.0
+          },
+          "ransomware": {
+            "windows": 5,
+            "hosts": 3,
+            "recall": 0.8
+          },
+          "scanning": {
+            "windows": 818,
+            "hosts": 27,
+            "recall": 0.9853300733496333
+          },
+          "xss": {
+            "windows": 574,
+            "hosts": 8,
+            "recall": 1.0
+          }
+        }
+      }
+    ],
+    "transformer": [
+      {
+        "seed": 11,
+        "n": 19098,
+        "n_attack": 5764,
+        "threshold": 0.029115602374076843,
+        "accuracy": 0.9496282333228611,
+        "precision": 0.8656716417910447,
+        "recall": 0.9861207494795281,
+        "f1": 0.9219789132197891,
+        "fpr": 0.06614669266536673,
+        "roc_auc": 0.9951880420378705,
+        "pr_auc": 0.9925779213977675,
+        "tpr_at_5pct_fpr": 0.9850798056904927,
+        "confusion": {
+          "tn": 12452,
+          "fp": 882,
+          "fn": 80,
+          "tp": 5684
+        },
+        "roc_auc_ci95": [
+          0.9942232600971164,
+          0.9961105792501977
+        ],
+        "per_source": {
+          "NF-BoT-IoT-v2": {
+            "n": 1276,
+            "attack_fraction": 0.9937304075235109,
+            "fpr": 1.0,
+            "recall": 1.0,
+            "roc_auc": 0.9624408517350157
+          },
+          "NF-CSE-CIC-IDS2018-v2": {
+            "n": 13115,
+            "attack_fraction": 0.14136484940907357,
+            "fpr": 0.07388331409288695,
+            "recall": 0.9573894282632147,
+            "roc_auc": 0.9846777649124955
+          },
+          "NF-ToN-IoT-v2": {
+            "n": 3033,
+            "attack_fraction": 0.8456973293768546,
+            "fpr": 0.0641025641025641,
+            "recall": 0.9996101364522417,
+            "roc_auc": 0.9981823028606654
+          },
+          "NF-UNSW-NB15-v2": {
+            "n": 1674,
+            "attack_fraction": 0.045997610513739545,
+            "fpr": 0.007514088916718848,
+            "recall": 1.0,
+            "roc_auc": 0.9986825948003155
+          }
+        },
+        "per_class": {
+          "analysis": {
+            "windows": 1,
+            "hosts": 1,
+            "recall": 1.0
+          },
+          "backdoor": {
+            "windows": 15,
+            "hosts": 3,
+            "recall": 1.0
+          },
+          "bot": {
+            "windows": 241,
+            "hosts": 19,
+            "recall": 1.0
+          },
+          "brute force": {
+            "windows": 86,
+            "hosts": 6,
+            "recall": 1.0
+          },
+          "ddos": {
+            "windows": 2175,
+            "hosts": 39,
+            "recall": 1.0
+          },
+          "dos": {
+            "windows": 840,
+            "hosts": 31,
+            "recall": 1.0
+          },
+          "exploits": {
+            "windows": 25,
+            "hosts": 7,
+            "recall": 1.0
+          },
+          "fuzzers": {
+            "windows": 20,
+            "hosts": 6,
+            "recall": 1.0
+          },
+          "generic": {
+            "windows": 10,
+            "hosts": 4,
+            "recall": 1.0
+          },
+          "infilteration": {
+            "windows": 346,
+            "hosts": 43,
+            "recall": 0.7716763005780347
+          },
+          "reconnaissance": {
+            "windows": 114,
+            "hosts": 19,
+            "recall": 1.0
+          },
+          "theft": {
+            "windows": 13,
+            "hosts": 1,
+            "recall": 1.0
+          },
+          "injection": {
+            "windows": 227,
+            "hosts": 13,
+            "recall": 1.0
+          },
+          "mitm": {
+            "windows": 3,
+            "hosts": 2,
+            "recall": 1.0
+          },
+          "password": {
+            "windows": 251,
+            "hosts": 12,
+            "recall": 1.0
+          },
+          "ransomware": {
+            "windows": 5,
+            "hosts": 3,
+            "recall": 0.8
+          },
+          "scanning": {
+            "windows": 818,
+            "hosts": 27,
+            "recall": 1.0
+          },
+          "xss": {
+            "windows": 574,
+            "hosts": 8,
+            "recall": 1.0
+          }
+        }
+      }
+    ]
+  },
+  "n_params": {
+    "bimambaformer": 380802,
+    "mamba_only": 281346,
+    "attn_only": 92034,
+    "bilstm": 224386,
+    "transformer": 423170
+  },
+  "summary_mean_std": {
+    "dataset_prior": {
+      "roc_auc": [
+        0.8319937425231444,
+        0.0
+      ],
+      "pr_auc": [
+        0.7234677609568452,
+        0.0
+      ],
+      "tpr_at_5pct_fpr": [
+        0.6649895905621096,
+        0.0
+      ],
+      "accuracy": [
+        0.7641637867839565,
+        0.0
+      ],
+      "precision": [
+        0.9937304075235109,
+        0.0
+      ],
+      "recall": [
+        0.21998612074947954,
+        0.0
+      ],
+      "f1": [
+        0.36022727272727273,
+        0.0
+      ],
+      "fpr": [
+        0.000599970001499925,
+        0.0
+      ]
+    },
+    "flow_lgbm_max": {
+      "roc_auc": [
+        0.9932817008525008,
+        0.0
+      ],
+      "pr_auc": [
+        0.9916969162880571,
+        0.0
+      ],
+      "tpr_at_5pct_fpr": [
+        0.9783136710617627,
+        0.0
+      ],
+      "accuracy": [
+        0.932034768038538,
+        0.0
+      ],
+      "precision": [
+        0.8240928882438316,
+        0.0
+      ],
+      "recall": [
+        0.9850798056904927,
+        0.0
+      ],
+      "f1": [
+        0.8974237395290027,
+        0.0
+      ],
+      "fpr": [
+        0.09089545522723864,
+        0.0
+      ]
+    },
+    "window_lgbm_pool": {
+      "roc_auc": [
+        0.9953924666709065,
+        0.0
+      ],
+      "pr_auc": [
+        0.9935112377631398,
+        0.0
+      ],
+      "tpr_at_5pct_fpr": [
+        0.984559333795975,
+        0.0
+      ],
+      "accuracy": [
+        0.9289454393130171,
+        0.0
+      ],
+      "precision": [
+        0.8156424581005587,
+        0.0
+      ],
+      "recall": [
+        0.9878556557945871,
+        0.0
+      ],
+      "f1": [
+        0.8935268732836407,
+        0.0
+      ],
+      "fpr": [
+        0.09652017399130043,
+        0.0
+      ]
+    },
+    "bimambaformer": {
+      "roc_auc": [
+        0.9921614085846713,
+        0.0
+      ],
+      "pr_auc": [
+        0.9848381042086533,
+        0.0
+      ],
+      "tpr_at_5pct_fpr": [
+        0.9819569743233866,
+        0.0
+      ],
+      "accuracy": [
+        0.9209341292281914,
+        0.0
+      ],
+      "precision": [
+        0.7995774647887324,
+        0.0
+      ],
+      "recall": [
+        0.9849063150589868,
+        0.0
+      ],
+      "f1": [
+        0.8826181592039801,
+        0.0
+      ],
+      "fpr": [
+        0.10671966401679917,
+        0.0
+      ]
+    },
+    "mamba_only": {
+      "roc_auc": [
+        0.9930790587465769,
+        0.0
+      ],
+      "pr_auc": [
+        0.9889417646337663,
+        0.0
+      ],
+      "tpr_at_5pct_fpr": [
+        0.9817834836918806,
+        0.0
+      ],
+      "accuracy": [
+        0.9067441616923239,
+        0.0
+      ],
+      "precision": [
+        0.7702537657755462,
+        0.0
+      ],
+      "recall": [
+        0.9847328244274809,
+        0.0
+      ],
+      "f1": [
+        0.864387421000533,
+        0.0
+      ],
+      "fpr": [
+        0.12696865156742163,
+        0.0
+      ]
+    },
+    "attn_only": {
+      "roc_auc": [
+        0.9941265276257353,
+        0.0
+      ],
+      "pr_auc": [
+        0.9904233307648823,
+        0.0
+      ],
+      "tpr_at_5pct_fpr": [
+        0.9833448993754337,
+        0.0
+      ],
+      "accuracy": [
+        0.9339197821761441,
+        0.0
+      ],
+      "precision": [
+        0.8286131386861314,
+        0.0
+      ],
+      "recall": [
+        0.9847328244274809,
+        0.0
+      ],
+      "f1": [
+        0.8999524338037102,
+        0.0
+      ],
+      "fpr": [
+        0.088045597720114,
+        0.0
+      ]
+    },
+    "bilstm": {
+      "roc_auc": [
+        0.9931542046249527,
+        0.0
+      ],
+      "pr_auc": [
+        0.9890172259856699,
+        0.0
+      ],
+      "tpr_at_5pct_fpr": [
+        0.9817834836918806,
+        0.0
+      ],
+      "accuracy": [
+        0.9044402555241386,
+        0.0
+      ],
+      "precision": [
+        0.7658971243418388,
+        0.0
+      ],
+      "recall": [
+        0.9842123525329632,
+        0.0
+      ],
+      "f1": [
+        0.8614380077442867,
+        0.0
+      ],
+      "fpr": [
+        0.13004349782510874,
+        0.0
+      ]
+    },
+    "transformer": {
+      "roc_auc": [
+        0.9951880420378705,
+        0.0
+      ],
+      "pr_auc": [
+        0.9925779213977675,
+        0.0
+      ],
+      "tpr_at_5pct_fpr": [
+        0.9850798056904927,
+        0.0
+      ],
+      "accuracy": [
+        0.9496282333228611,
+        0.0
+      ],
+      "precision": [
+        0.8656716417910447,
+        0.0
+      ],
+      "recall": [
+        0.9861207494795281,
+        0.0
+      ],
+      "f1": [
+        0.9219789132197891,
+        0.0
+      ],
+      "fpr": [
+        0.06614669266536673,
+        0.0
+      ]
+    }
+  }
+}

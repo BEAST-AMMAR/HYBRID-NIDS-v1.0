@@ -53,4 +53,6 @@ data/*.csv
 data/**/*.csv
 *.parquet
 data/**/*.parquet
+*.npz
+results/protocols/*.npz
 

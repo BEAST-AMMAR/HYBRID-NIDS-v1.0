@@ -26,6 +26,7 @@ A state-of-the-art, 100% local, air-gapped **Network Intrusion Detection System 
 | **System Context & Engineering Audit** | [memory.md](file:///e:/major%20phase%202%202.0/phase2%20models%20nfuq/memory.md) | In-depth architectural context, root cause analysis of false alarms, code diffs, and verification logs. |
 | **Git Audit & Rollback Trace Log** | [AUDIT_AND_ROLLBACK_LOG.md](file:///e:/major%20phase%202%202.0/phase2%20models%20nfuq/AUDIT_AND_ROLLBACK_LOG.md) | Immutable chronological commit ledger, verification traces, and exact Git rollback commands. |
 | **Benchmark Integrity & Fair Baseline Report** | [BENCHMARK_INTEGRITY_AND_FAIR_BASELINE_REPORT.md](file:///e:/major%20phase%202%202.0/phase2%20models%20nfuq/docs/BENCHMARK_INTEGRITY_AND_FAIR_BASELINE_REPORT.md) | 52-partition leakage audit (`01_check_split_leakage.py`) and 19,098-window fair LightGBM vs. Bi-MambaFormer comparison (`02_fair_baselines.py`). |
+| **Strict Zero-Leakage & Ablation Report** | [STRICT_PROTOCOL_EVALUATION_REPORT.md](file:///e:/major%20phase%202%202.0/phase2%20models%20nfuq/docs/STRICT_PROTOCOL_EVALUATION_REPORT.md) | Global deduplicated 80/10/10 host-disjoint evaluation & 8-model ablation (`03_strict_protocol.py`): Bi-MambaFormer #1 ROC-AUC (`0.9406`). |
 | **Baseline 1 Documentation** | [README_baseline1_nsl.md](file:///e:/major%20phase%202%202.0/phase2%20models%20nfuq/docs/legacy_baselines/README_baseline1_nsl.md) | Full technical README and benchmark outputs of Baseline 1 on NSL-KDD. |
 | **Baseline 2 Documentation** | [README_baseline2_nfuq.md](file:///e:/major%20phase%202%202.0/phase2%20models%20nfuq/docs/legacy_baselines/README_baseline2_nfuq.md) | Full technical README and benchmark outputs of Baseline 2 on NF-UQ-NIDS-v2. |
 | **End-to-End Pipeline Verification** | [test_e2e_verification.py](file:///e:/major%20phase%202%202.0/phase2%20models%20nfuq/tests/test_e2e_verification.py) | Automated GPU test script validating all 5 attack vectors, normal flows, policy shifts, and RAG. |
@@ -257,6 +258,7 @@ Raw Network Interface (NIC) / Live Sniffer / PCAP Replay / Synthetic Stream
 │   └── NF UQ NIDS V2/                     # NF-UQ-NIDS-v2 dataset (52 Parquet partitions)
 ├── docs/
 │   ├── BENCHMARK_INTEGRITY_AND_FAIR_BASELINE_REPORT.md # Split leakage & fair LightGBM vs. Bi-MambaFormer audit
+│   ├── STRICT_PROTOCOL_EVALUATION_REPORT.md # Global deduplicated host-disjoint & 8-model ablation report
 │   ├── PHASE_2_MASTER_PLAN.md             # Complete Phase 2 architecture roadmap
 │   ├── DATA_NOTES.md                      # NetFlow v2 schema & IP address masking notes
 │   ├── NIDS_Implementation_Guide_Antigravity.md # Engineering setup and reference guide
