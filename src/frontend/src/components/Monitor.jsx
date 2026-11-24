@@ -101,7 +101,7 @@ const Monitor = ({ token, setToken }) => {
                         ...data,
                         id: data.id || `${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
                     };
-                    setLogs((prev) => [logEntry, ...prev.slice(0, 999)]);
+                    setLogs((prev) => [logEntry, ...prev.slice(0, 99)]);
                 } catch (e) {
                     console.error("Error parsing WebSocket packet:", e);
                 }
@@ -460,7 +460,7 @@ const Monitor = ({ token, setToken }) => {
                     <div className="bg-blue-900/20 p-6 rounded-lg border border-blue-500/30">
                         <h3 className="text-blue-400 font-bold mb-2">NF-UQ-NIDS-v2 Engine</h3>
                         <p className="text-sm text-gray-300">
-                            Stateful 133-Feature NetFlow V2 Engine powered by PyTorch CUDA on NVIDIA RTX 5070, 200-Tree Latent Isolation Forest, Mahalanobis manifold distance, and Gated Fusion.
+                            Dual-Stream Hybrid Bi-MambaFormer (Bidirectional Mamba SSM + 4-Head Temporal Attention + Adaptive Gated Fusion) over L=32 Host NetFlow V2 Sequence Windows on NVIDIA RTX 5070 GPU.
                         </p>
                     </div>
                 </div>
